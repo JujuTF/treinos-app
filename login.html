@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Treinos App — Entrar</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--fundo);
+            padding: 20px;
+            padding-bottom: 20px; /* override do body padding-bottom */
+        }
+
+        .login-wrap {
+            width: 100%;
+            max-width: 380px;
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-logo-icon {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .login-logo h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--azul-escuro);
+        }
+
+        .login-logo p {
+            font-size: 0.85rem;
+            color: var(--cinza-meio);
+            margin-top: 4px;
+        }
+
+        .login-card {
+            background: var(--branco);
+            border-radius: var(--radius);
+            padding: 28px 24px;
+            box-shadow: var(--sombra-card);
+        }
+
+        .login-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 24px;
+            border-bottom: 2px solid var(--cinza-borda);
+        }
+
+        .login-tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--cinza-meio);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.15s;
+            background: none;
+            border-top: none;
+            border-left: none;
+            border-right: none;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .login-tab.active {
+            color: var(--verde);
+            border-bottom-color: var(--verde);
+        }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .erro-msg {
+            background: #FEE2E2;
+            color: #DC2626;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            margin-bottom: 14px;
+            display: none;
+        }
+
+        .sucesso-msg {
+            background: var(--verde-claro);
+            color: var(--verde);
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            margin-bottom: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="login-wrap">
+    <div class="login-logo">
+        <span class="login-logo-icon">🏋️</span>
+        <h1>Treinos App</h1>
+        <p>O teu diário de treino pessoal</p>
+    </div>
+
+    <div class="login-card">
+        <div class="login-tabs">
+            <button class="login-tab active" onclick="mudarTab('login')">Entrar</button>
+            <button class="login-tab" onclick="mudarTab('registo')">Criar conta</button>
+        </div>
+
+        <!-- LOGIN -->
+        <div class="tab-panel active" id="tab-login">
+            <div class="erro-msg" id="login-erro"></div>
+            <div class="form-grupo">
+                <label>Email</label>
+                <input type="email" id="login-email" placeholder="o-teu@email.com" autocomplete="email">
+            </div>
+            <div class="form-grupo">
+                <label>Password</label>
+                <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+            </div>
+            <button class="btn btn-primario" onclick="fazerLogin()" id="btn-login">
+                Entrar
+            </button>
+        </div>
+
+        <!-- REGISTO -->
+        <div class="tab-panel" id="tab-registo">
+            <div class="erro-msg" id="registo-erro"></div>
+            <div class="sucesso-msg" id="registo-sucesso"></div>
+            <div class="form-grupo">
+                <label>Email</label>
+                <input type="email" id="registo-email" placeholder="o-teu@email.com" autocomplete="email">
+            </div>
+            <div class="form-grupo">
+                <label>Password</label>
+                <input type="password" id="registo-password" placeholder="mínimo 6 caracteres" autocomplete="new-password">
+            </div>
+            <button class="btn btn-primario" onclick="fazerRegisto()" id="btn-registo">
+                Criar conta
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+    // Se já está logada, vai para o dashboard
+    async function verificarSessao() {
+        const { data: { user } } = await db.auth.getUser();
+        if (user) window.location.href = 'index.html';
+    }
+    verificarSessao();
+
+    function mudarTab(tab) {
+        document.querySelectorAll('.login-tab').forEach((t, i) => {
+            t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'registo'));
+        });
+        document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+        document.getElementById('tab-registo').classList.toggle('active', tab === 'registo');
+    }
+
+    function mostrarErro(id, msg) {
+        const el = document.getElementById(id);
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    function esconderErro(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    async function fazerLogin() {
+        esconderErro('login-erro');
+        const email = document.getElementById('login-email').value.trim();
+        const password = document.getElementById('login-password').value;
+        const btn = document.getElementById('btn-login');
+
+        if (!email || !password) {
+            mostrarErro('login-erro', 'Preenche o email e a password.');
+            return;
+        }
+
+        btn.textContent = 'A entrar...';
+        btn.disabled = true;
+
+        const { error } = await db.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            mostrarErro('login-erro', 'Email ou password incorretos.');
+            btn.textContent = 'Entrar';
+            btn.disabled = false;
+        } else {
+            window.location.href = 'index.html';
+        }
+    }
+
+    async function fazerRegisto() {
+        esconderErro('registo-erro');
+        document.getElementById('registo-sucesso').style.display = 'none';
+
+        const email = document.getElementById('registo-email').value.trim();
+        const password = document.getElementById('registo-password').value;
+        const btn = document.getElementById('btn-registo');
+
+        if (!email || !password) {
+            mostrarErro('registo-erro', 'Preenche o email e a password.');
+            return;
+        }
+
+        if (password.length < 6) {
+            mostrarErro('registo-erro', 'A password deve ter pelo menos 6 caracteres.');
+            return;
+        }
+
+        btn.textContent = 'A criar conta...';
+        btn.disabled = true;
+
+        const { error } = await db.auth.signUp({ email, password });
+
+        if (error) {
+            mostrarErro('registo-erro', error.message);
+            btn.textContent = 'Criar conta';
+            btn.disabled = false;
+        } else {
+            const sucesso = document.getElementById('registo-sucesso');
+            sucesso.textContent = 'Conta criada! Verifica o teu email para confirmar.';
+            sucesso.style.display = 'block';
+            btn.textContent = 'Criar conta';
+            btn.disabled = false;
+        }
+    }
+
+    // Enter para submeter
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+            if (document.getElementById('tab-login').classList.contains('active')) fazerLogin();
+            else fazerRegisto();
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -13,8 +13,20 @@ let estadoDia = {
 
 let graficoPeso = null;
 
+// ---- AUTH ----
+async function verificarAuth() {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) window.location.href = 'login.html';
+}
+
+async function fazerLogout() {
+    await db.auth.signOut();
+    window.location.href = 'login.html';
+}
+
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', async () => {
+    await verificarAuth();
     setarDataHeader();
     await carregarDiaHoje();
     await carregarWidgets();
