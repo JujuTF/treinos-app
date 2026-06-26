@@ -28,6 +28,7 @@ async function fazerLogout() {
 document.addEventListener('DOMContentLoaded', async () => {
     await verificarAuth();
     setarDataHeader();
+    await carregarTreinoHoje();
     mostrarDeployInfo();
     await carregarDiaHoje();
     await carregarWidgets();
@@ -223,6 +224,69 @@ async function guardarDiario() {
     } else {
         mostrarToast('Dia guardado ✓');
         await carregarWidgets();
+    }
+}
+
+
+// ============================================
+// TREINO DE HOJE — CARD DINÂMICO
+// ============================================
+
+async function carregarTreinoHoje() {
+    const container = document.getElementById('treino-hoje-card');
+    if (!container) return;
+
+    try {
+        const { data } = await db
+            .from('sessoes_treino')
+            .select('*, exercicios_sessao(*)')
+            .eq('data', hoje())
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (data && data.length > 0) {
+            const s = data[0];
+            const tempo = s.tempo_wod
+                ? `${Math.floor(s.tempo_wod/60)}:${String(s.tempo_wod%60).padStart(2,'0')}`
+                : null;
+            const rounds = s.rounds_completos ? `${s.rounds_completos} rondas` : null;
+            const nexs = s.exercicios_sessao?.length || 0;
+
+            container.innerHTML = `
+                <div class="card" style="border-left: 4px solid var(--verde);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                        <div>
+                            <div style="font-weight:700; font-size:1rem; color:var(--azul-escuro);">✅ ${s.nome_treino}</div>
+                            <div style="font-size:0.78rem; color:var(--cinza-meio); margin-top:2px;">Treino de hoje concluído</div>
+                        </div>
+                        <span class="badge badge-verde">Feito</span>
+                    </div>
+                    <div style="display:flex; gap:16px; font-size:0.85rem; color:var(--cinza-meio); margin-bottom:12px;">
+                        ${tempo ? `<span>⏱ ${tempo}</span>` : ''}
+                        ${rounds ? `<span>🔄 ${rounds}</span>` : ''}
+                        ${nexs > 0 ? `<span>💪 ${nexs} exercícios</span>` : ''}
+                    </div>
+                    ${s.notas ? `<div style="font-size:0.82rem; color:var(--cinza-meio); font-style:italic; margin-bottom:12px;">${s.notas}</div>` : ''}
+                    <div style="display:flex; gap:8px;">
+                        <a href="sessao.html?id=${s.id}" class="btn btn-secundario" style="flex:1; justify-content:center; font-size:0.85rem;">
+                            Ver detalhes
+                        </a>
+                        <a href="sessao.html" class="btn btn-secundario" style="flex:1; justify-content:center; font-size:0.85rem;">
+                            + Outro treino
+                        </a>
+                    </div>
+                </div>`;
+        } else {
+            container.innerHTML = `
+                <a href="sessao.html" class="btn btn-primario" style="font-size:1rem; padding:16px 20px;">
+                    🏋️ Iniciar treino de hoje
+                </a>`;
+        }
+    } catch(e) {
+        container.innerHTML = `
+            <a href="sessao.html" class="btn btn-primario" style="font-size:1rem; padding:16px 20px;">
+                🏋️ Iniciar treino de hoje
+            </a>`;
     }
 }
 
