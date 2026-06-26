@@ -391,7 +391,7 @@ let cronometroAtivo = false;
 let rondasWOD = 0;
 
 // ---- INIT ----
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('sess-data').value = hoje();
     document.getElementById('header-data').textContent = new Date().toLocaleDateString('pt-PT', {
         weekday: 'short', day: 'numeric', month: 'long'
@@ -399,15 +399,256 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Drag & drop
     const zone = document.getElementById('upload-zone');
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
-    zone.addEventListener('drop', e => {
-        e.preventDefault();
-        zone.classList.remove('drag');
-        const file = e.dataTransfer.files[0];
-        if (file) processarFicheiro(file);
-    });
+    if (zone) {
+        zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('drag');
+            const file = e.dataTransfer.files[0];
+            if (file) processarFicheiro(file);
+        });
+    }
+
+    // Ver detalhes de sessão existente
+    const params = new URLSearchParams(window.location.search);
+    const sessaoId = params.get('id');
+    if (sessaoId) {
+        await verDetalhesSessao(sessaoId);
+    }
 });
+
+async function verDetalhesSessao(id) {
+    const { data: s, error } = await db
+        .from('sessoes_treino')
+        .select('*, exercicios_sessao(*)')
+        .eq('id', id)
+        .single();
+
+    if (error || !s) { mostrarToast('Sessão não encontrada'); return; }
+
+    // Esconde upload, mostra detalhes
+    document.getElementById('passo-upload').style.display = 'none';
+    document.getElementById('passo-treino').style.display = 'block';
+
+    const dataFormatada = new Date(s.data + 'T00:00:00').toLocaleDateString('pt-PT', {
+        weekday: 'long', day: 'numeric', month: 'long'
+    });
+
+    const tempo = s.tempo_wod
+        ? `${Math.floor(s.tempo_wod/60)}:${String(s.tempo_wod%60).padStart(2,'0')}`
+        : null;
+
+    document.getElementById('header-titulo').textContent = 'Detalhes';
+    document.getElementById('sessao-header-info').innerHTML = `
+        <h2>${s.nome_treino}</h2>
+        <div class="meta">${dataFormatada}${tempo ? ' · ⏱ ' + tempo : ''}${s.rounds_completos ? ' · 🔄 ' + s.rounds_completos + ' rondas' : ''}</div>
+    `;
+
+    // Exercícios
+    const exs = (s.exercicios_sessao || []).sort((a,b) => a.ordem - b.ordem);
+    const planoEl = document.getElementById('plano-conteudo');
+    const guardarBtn = document.querySelector('button[onclick="guardarSessaoCompleta()"]');
+    if (guardarBtn) guardarBtn.style.display = 'none';
+
+    if (exs.length > 0) {
+        planoEl.innerHTML = `
+            <div class="card">
+                <div class="card-titulo">Exercícios registados</div>
+                ${exs.map(ex => `
+                    <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--cinza-claro);">
+                        <div>
+                            <div style="font-weight:600; font-size:0.9rem;">${ex.nome}</div>
+                            ${ex.notas ? `<div style="font-size:0.78rem; color:var(--cinza-meio);">${ex.notas}</div>` : ''}
+                        </div>
+                        <div style="text-align:right; font-family:'DM Mono',monospace; font-size:0.85rem; color:var(--verde);">
+                            ${ex.peso_kg ? ex.peso_kg + ' kg' : ''}
+                            ${ex.peso_kg && ex.reps ? ' · ' : ''}
+                            ${ex.reps || ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>`;
+    } else {
+        planoEl.innerHTML = '<div class="card"><div style="color:var(--cinza-meio); font-size:0.9rem;">Sem exercícios registados.</div></div>';
+    }
+
+    if (s.notas) {
+        document.getElementById('sess-notas').value = s.notas;
+        document.getElementById('sess-notas').disabled = true;
+    }
+
+    // Comparação com sessão anterior
+    await mostrarComparacaoDetalhada(s);
+
+    // Resumo para Claude + campo de sugestões
+    mostrarResumoExportavel(s, exs);
+    mostrarCampoSugestoes(s);
+}
+
+async function mostrarComparacaoDetalhada(sessaoAtual) {
+    try {
+        const { data } = await db
+            .from('sessoes_treino')
+            .select('*, exercicios_sessao(*)')
+            .ilike('nome_treino', `%${sessaoAtual.nome_treino.split(' ')[0]}%`)
+            .neq('id', sessaoAtual.id)
+            .order('data', { ascending: false })
+            .limit(1);
+
+        if (!data || data.length === 0) return;
+
+        const anterior = data[0];
+        const dataAnt = new Date(anterior.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+        const dataAtual = new Date(sessaoAtual.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+
+        const tempoAnt = anterior.tempo_wod ? `${Math.floor(anterior.tempo_wod/60)}:${String(anterior.tempo_wod%60).padStart(2,'0')}` : '—';
+        const tempoAtual = sessaoAtual.tempo_wod ? `${Math.floor(sessaoAtual.tempo_wod/60)}:${String(sessaoAtual.tempo_wod%60).padStart(2,'0')}` : '—';
+
+        const melhorTempo = sessaoAtual.tempo_wod && anterior.tempo_wod
+            ? sessaoAtual.tempo_wod < anterior.tempo_wod ? '⬇️ Mais rápido!' : sessaoAtual.tempo_wod > anterior.tempo_wod ? '⬆️ Mais lento' : '= Igual'
+            : '';
+
+        const melhorRondas = sessaoAtual.rounds_completos && anterior.rounds_completos
+            ? sessaoAtual.rounds_completos > anterior.rounds_completos ? '⬆️ Mais rondas!' : sessaoAtual.rounds_completos < anterior.rounds_completos ? '⬇️ Menos rondas' : '= Igual'
+            : '';
+
+        // Comparar exercícios
+        const exsAnt = (anterior.exercicios_sessao || []).sort((a,b) => a.ordem - b.ordem);
+        const exsAtual = (sessaoAtual.exercicios_sessao || []).sort((a,b) => a.ordem - b.ordem);
+
+        let exComparacao = '';
+        if (exsAnt.length > 0 && exsAtual.length > 0) {
+            exComparacao = exsAtual.map(ex => {
+                const match = exsAnt.find(e => e.nome.toLowerCase() === ex.nome.toLowerCase());
+                if (!match) return '';
+                const diffPeso = ex.peso_kg && match.peso_kg ? ex.peso_kg - match.peso_kg : null;
+                const seta = diffPeso > 0 ? `<span style="color:var(--verde)">+${diffPeso}kg ⬆️</span>` 
+                           : diffPeso < 0 ? `<span style="color:var(--laranja)">${diffPeso}kg ⬇️</span>`
+                           : diffPeso === 0 ? '<span style="color:var(--cinza-meio)">= igual</span>' : '';
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--cinza-claro); font-size:0.82rem;">
+                        <span style="font-weight:500;">${ex.nome}</span>
+                        <div style="text-align:right;">
+                            <span style="color:var(--cinza-meio)">${match.peso_kg || '—'}kg</span>
+                            <span style="color:var(--cinza-meio)"> → </span>
+                            <span style="font-weight:600;">${ex.peso_kg || '—'}kg</span>
+                            ${seta ? ' ' + seta : ''}
+                        </div>
+                    </div>`;
+            }).filter(Boolean).join('');
+        }
+
+        const el = document.getElementById('comparacao-anterior');
+        el.style.display = 'block';
+        el.innerHTML = `
+            <div class="card">
+                <div class="card-titulo">Evolução vs sessão anterior</div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px;">
+                    <div style="text-align:center; padding:12px; background:var(--cinza-claro); border-radius:var(--radius-sm);">
+                        <div style="font-size:0.7rem; color:var(--cinza-meio); margin-bottom:4px; text-transform:uppercase;">${dataAnt}</div>
+                        <div style="font-family:'DM Mono',monospace; font-size:1.2rem; font-weight:700; color:var(--cinza-meio)">${tempoAnt}</div>
+                        <div style="font-size:0.75rem; color:var(--cinza-meio)">${anterior.rounds_completos ? anterior.rounds_completos + ' rondas' : ''}</div>
+                    </div>
+                    <div style="text-align:center; padding:12px; background:var(--verde-claro); border-radius:var(--radius-sm); border:2px solid var(--verde);">
+                        <div style="font-size:0.7rem; color:var(--verde); margin-bottom:4px; text-transform:uppercase;">${dataAtual} (hoje)</div>
+                        <div style="font-family:'DM Mono',monospace; font-size:1.2rem; font-weight:700; color:var(--azul-escuro)">${tempoAtual}</div>
+                        <div style="font-size:0.75rem; color:var(--cinza-meio)">${sessaoAtual.rounds_completos ? sessaoAtual.rounds_completos + ' rondas' : ''}</div>
+                    </div>
+                </div>
+
+                ${melhorTempo || melhorRondas ? `
+                <div style="text-align:center; font-weight:600; font-size:0.9rem; margin-bottom:12px; color:var(--verde);">
+                    ${melhorTempo} ${melhorRondas}
+                </div>` : ''}
+
+                ${exComparacao ? `
+                <div class="card-titulo" style="margin-top:4px;">Pesos por exercício</div>
+                ${exComparacao}` : ''}
+            </div>`;
+    } catch(e) { console.error(e); }
+}
+
+function mostrarResumoExportavel(s, exs) {
+    const tempo = s.tempo_wod ? `${Math.floor(s.tempo_wod/60)}:${String(s.tempo_wod%60).padStart(2,'0')}` : null;
+    const data = new Date(s.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    let texto = `## Sessão de treino — ${data}
+`;
+    texto += `**Treino:** ${s.nome_treino}
+`;
+    if (tempo) texto += `**Tempo WOD:** ${tempo}
+`;
+    if (s.rounds_completos) texto += `**Rondas:** ${s.rounds_completos}
+`;
+    if (s.notas) texto += `**Notas:** ${s.notas}
+`;
+
+    if (exs.length > 0) {
+        texto += `
+### Exercícios
+`;
+        exs.forEach(ex => {
+            texto += `- **${ex.nome}**`;
+            if (ex.peso_kg) texto += ` — ${ex.peso_kg}kg`;
+            if (ex.reps) texto += ` × ${ex.reps}`;
+            if (ex.notas) texto += ` (${ex.notas})`;
+            texto += `
+`;
+        });
+    }
+
+    if (s.sugestoes_claude) {
+        texto += `
+### Sugestões anteriores do Claude
+${s.sugestoes_claude}
+`;
+    }
+
+    const planoEl = document.getElementById('plano-conteudo');
+    const resumoDiv = document.createElement('div');
+    resumoDiv.className = 'card';
+    resumoDiv.innerHTML = `
+        <div class="card-titulo">Resumo para o Claude</div>
+        <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:10px;">Copia este texto e envia ao Claude para análise e sugestões.</p>
+        <textarea id="resumo-texto" readonly style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Mono',monospace; font-size:0.78rem; resize:vertical; min-height:160px; color:var(--cinza-texto); background:var(--fundo); outline:none;">${texto}</textarea>
+        <button class="btn btn-secundario" style="width:100%; margin-top:8px; justify-content:center;" onclick="copiarResumo()">
+            📋 Copiar
+        </button>`;
+    planoEl.appendChild(resumoDiv);
+}
+
+function mostrarCampoSugestoes(s) {
+    const planoEl = document.getElementById('plano-conteudo');
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `
+        <div class="card-titulo">💡 Sugestões do Claude</div>
+        <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:10px;">Cola aqui o feedback que o Claude te deu sobre esta sessão.</p>
+        <textarea id="sugestoes-input" placeholder="Cola aqui as sugestões do Claude..." style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Sans',sans-serif; font-size:0.85rem; resize:vertical; min-height:120px; outline:none;">${s.sugestoes_claude || ''}</textarea>
+        <button class="btn btn-primario" style="margin-top:8px;" onclick="guardarSugestoes('${s.id}')">
+            Guardar sugestões
+        </button>`;
+    planoEl.appendChild(div);
+}
+
+async function copiarResumo() {
+    const texto = document.getElementById('resumo-texto').value;
+    await navigator.clipboard.writeText(texto);
+    mostrarToast('Copiado ✓');
+}
+
+async function guardarSugestoes(sessaoId) {
+    const sugestoes = document.getElementById('sugestoes-input').value.trim();
+    const { error } = await db
+        .from('sessoes_treino')
+        .update({ sugestoes_claude: sugestoes })
+        .eq('id', sessaoId);
+
+    if (error) mostrarToast('Erro ao guardar 😕');
+    else mostrarToast('Sugestões guardadas ✓');
+}
 
 function hoje() {
     return new Date().toISOString().split('T')[0];
