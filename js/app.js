@@ -28,6 +28,7 @@ async function fazerLogout() {
 document.addEventListener('DOMContentLoaded', async () => {
     await verificarAuth();
     setarDataHeader();
+    mostrarDeployInfo();
     await carregarDiaHoje();
     await carregarWidgets();
     await carregarCicloResumido();
@@ -81,6 +82,21 @@ function setarDatasDefault() {
         const el = document.getElementById(id);
         if (el) el.value = h;
     });
+}
+
+async function mostrarDeployInfo() {
+    try {
+        const res = await fetch('https://api.github.com/repos/JujuTF/treinos-app/commits/master');
+        const data = await res.json();
+        const dataCommit = new Date(data.commit.author.date);
+        const formatado = dataCommit.toLocaleDateString('pt-PT', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+            timeZone: 'Europe/Lisbon'
+        });
+        const el = document.getElementById('deploy-info');
+        if (el) el.textContent = 'v ' + formatado;
+    } catch (e) { /* silencioso */ }
 }
 
 function setarDataHeader() {
