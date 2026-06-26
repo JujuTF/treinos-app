@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Sessão de Treino</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* ---- SESSÃO ---- */
+        .sessao-header {
+            background: var(--verde);
+            color: white;
+            padding: 16px 20px;
+            margin: -20px -20px 20px;
+            border-radius: 0 0 var(--radius) var(--radius);
+        }
+
+        .sessao-header h2 { font-size: 1.2rem; font-weight: 700; }
+        .sessao-header .meta { font-size: 0.8rem; opacity: 0.85; margin-top: 4px; }
+
+        /* ---- UPLOAD ZONE ---- */
+        .upload-zone {
+            border: 2px dashed var(--cinza-borda);
+            border-radius: var(--radius);
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--branco);
+        }
+
+        .upload-zone:hover, .upload-zone.drag { 
+            border-color: var(--verde); 
+            background: var(--verde-claro);
+        }
+
+        .upload-zone-icon { font-size: 2.5rem; margin-bottom: 8px; }
+        .upload-zone p { color: var(--cinza-meio); font-size: 0.9rem; }
+        .upload-zone strong { color: var(--verde); }
+
+        /* ---- BLOCO DE TREINO ---- */
+        .bloco-treino {
+            background: var(--branco);
+            border-radius: var(--radius);
+            margin-bottom: 14px;
+            overflow: hidden;
+            box-shadow: var(--sombra);
+        }
+
+        .bloco-header {
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .bloco-header-info { flex: 1; }
+        .bloco-titulo { font-weight: 700; font-size: 1rem; color: var(--azul-escuro); }
+        .bloco-sub { font-size: 0.78rem; color: var(--cinza-meio); margin-top: 2px; }
+
+        .bloco-badge {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 99px;
+            background: var(--verde-claro);
+            color: var(--verde);
+        }
+
+        .bloco-badge.laranja { background: #FEF3EE; color: var(--laranja); }
+        .bloco-badge.cinza { background: var(--cinza-claro); color: var(--cinza-meio); }
+
+        .bloco-corpo { padding: 0 16px 16px; }
+
+        /* ---- EXERCÍCIO ---- */
+        .exercicio-item {
+            border: 1.5px solid var(--cinza-borda);
+            border-radius: var(--radius-sm);
+            margin-bottom: 10px;
+            overflow: hidden;
+            transition: border-color 0.15s;
+        }
+
+        .exercicio-item.feito { border-color: var(--verde); }
+
+        .exercicio-nome-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: var(--fundo);
+        }
+
+        .exercicio-check {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            border: 2px solid var(--cinza-borda);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .exercicio-check.checked {
+            background: var(--verde);
+            border-color: var(--verde);
+            color: white;
+        }
+
+        .exercicio-nome { font-weight: 600; font-size: 0.9rem; flex: 1; }
+        .exercicio-ref { font-size: 0.75rem; color: var(--cinza-meio); }
+
+        .exercicio-plan {
+            padding: 8px 14px;
+            font-size: 0.8rem;
+            color: var(--cinza-meio);
+            border-bottom: 1px solid var(--cinza-borda);
+            background: var(--branco);
+        }
+
+        .exercicio-plan span { 
+            background: var(--cinza-claro); 
+            padding: 2px 8px; 
+            border-radius: 4px; 
+            margin-right: 6px;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .exercicio-registo {
+            padding: 10px 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            background: var(--branco);
+        }
+
+        .registo-campo label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--cinza-meio);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .registo-campo input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1.5px solid var(--cinza-borda);
+            border-radius: var(--radius-sm);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--azul-escuro);
+            background: var(--branco);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .registo-campo input:focus { border-color: var(--verde); }
+
+        .notas-exercicio {
+            padding: 0 14px 10px;
+            background: var(--branco);
+        }
+
+        .notas-exercicio textarea {
+            width: 100%;
+            border: 1.5px solid var(--cinza-borda);
+            border-radius: var(--radius-sm);
+            padding: 8px 10px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.82rem;
+            color: var(--cinza-meio);
+            resize: none;
+            min-height: 50px;
+            outline: none;
+        }
+
+        .notas-exercicio textarea:focus { border-color: var(--verde); }
+
+        /* ---- CRONÓMETRO WOD ---- */
+        .cronometro-wrap {
+            background: var(--azul-escuro);
+            color: white;
+            border-radius: var(--radius);
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .cron-titulo { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; margin-bottom: 8px; }
+
+        .cron-display {
+            font-family: 'DM Mono', monospace;
+            font-size: 3.5rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            line-height: 1;
+            margin-bottom: 16px;
+        }
+
+        .cron-btns { display: flex; gap: 10px; justify-content: center; }
+
+        .cron-btn {
+            padding: 10px 24px;
+            border-radius: var(--radius-sm);
+            border: none;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .cron-btn.start { background: var(--verde); color: white; }
+        .cron-btn.stop { background: var(--laranja); color: white; }
+        .cron-btn.reset { background: rgba(255,255,255,0.15); color: white; }
+
+        .cron-rondas {
+            margin-top: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .cron-rondas-label { font-size: 0.8rem; opacity: 0.7; }
+
+        .cron-rondas-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .cron-rondas-btns { display: flex; gap: 6px; }
+
+        .cron-rondas-btns button {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        /* ---- NOTA GERAL ---- */
+        .nota-geral { margin-top: 6px; }
+
+        /* ---- PROGRESSO ---- */
+        .progresso-bar {
+            background: var(--cinza-claro);
+            border-radius: 99px;
+            height: 6px;
+            margin-bottom: 16px;
+            overflow: hidden;
+        }
+
+        .progresso-fill {
+            height: 100%;
+            background: var(--verde);
+            border-radius: 99px;
+            transition: width 0.4s ease;
+        }
+
+        /* ---- COMPARAÇÃO ---- */
+        .comparacao-box {
+            background: var(--verde-claro);
+            border-radius: var(--radius-sm);
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            font-size: 0.82rem;
+        }
+
+        .comparacao-box strong { color: var(--verde); }
+
+        /* ---- WARN SEMANA ---- */
+        .warn-box {
+            background: #FEF3EE;
+            border-left: 3px solid var(--laranja);
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            color: var(--cinza-texto);
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <a href="index.html" style="color:var(--cinza-meio); display:flex;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <h1 id="header-titulo">Nova Sessão</h1>
+    </div>
+    <span class="header-data" id="header-data"></span>
+</header>
+
+<div class="page active" id="page-sessao">
+
+    <!-- PASSO 1: Upload ou escolha -->
+    <div id="passo-upload">
+        <div class="card">
+            <div class="card-titulo">Treino de hoje</div>
+            <div class="form-grupo">
+                <label>Data</label>
+                <input type="date" id="sess-data">
+            </div>
+            <div class="form-grupo">
+                <label>Nome</label>
+                <input type="text" id="sess-nome" placeholder="ex: Treino Completo, Força Curta...">
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Plano do treino</div>
+            <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+                <div class="upload-zone-icon">📄</div>
+                <p><strong>Clica para carregar o ficheiro .md</strong><br>gerado pelo Claude para hoje</p>
+            </div>
+            <input type="file" id="file-input" accept=".md,.txt" style="display:none" onchange="lerFicheiro(this)">
+
+            <div style="margin-top:12px; text-align:center; color:var(--cinza-meio); font-size:0.82rem;">ou</div>
+
+            <button class="btn btn-secundario" style="width:100%; margin-top:10px; justify-content:center;" onclick="semPlano()">
+                Registar sem plano
+            </button>
+        </div>
+    </div>
+
+    <!-- PASSO 2: Treino em direto -->
+    <div id="passo-treino" style="display:none;">
+
+        <div id="sessao-header-info" class="sessao-header"></div>
+
+        <!-- Progresso -->
+        <div class="progresso-bar">
+            <div class="progresso-fill" id="progresso-fill" style="width:0%"></div>
+        </div>
+
+        <!-- Comparação com sessão anterior -->
+        <div id="comparacao-anterior" style="display:none;"></div>
+
+        <!-- Conteúdo do plano -->
+        <div id="plano-conteudo"></div>
+
+        <!-- Notas gerais -->
+        <div class="card nota-geral">
+            <div class="card-titulo">Notas gerais</div>
+            <textarea id="sess-notas" placeholder="Como correu? Sensações, dificuldades..." 
+                style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Sans',sans-serif; font-size:0.9rem; resize:vertical; min-height:80px; outline:none;"></textarea>
+        </div>
+
+        <button class="btn btn-primario" onclick="guardarSessaoCompleta()" style="margin-bottom:20px;">
+            ✓ Guardar sessão
+        </button>
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+
+// ---- AUTH ----
+async function verificarAuth() {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) window.location.href = 'login.html';
+}
+verificarAuth();
+
+// ---- ESTADO ----
+let planoMD = '';
+let blocosData = [];
+let exerciciosFeitos = new Set();
+let cronometroInterval = null;
+let cronometroSegundos = 0;
+let cronometroAtivo = false;
+let rondasWOD = 0;
+
+// ---- INIT ----
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('sess-data').value = hoje();
+    document.getElementById('header-data').textContent = new Date().toLocaleDateString('pt-PT', {
+        weekday: 'short', day: 'numeric', month: 'long'
+    });
+
+    // Drag & drop
+    const zone = document.getElementById('upload-zone');
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('drag');
+        const file = e.dataTransfer.files[0];
+        if (file) processarFicheiro(file);
+    });
+});
+
+function hoje() {
+    return new Date().toISOString().split('T')[0];
+}
+
+function mostrarToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ---- UPLOAD ----
+function lerFicheiro(input) {
+    if (input.files[0]) processarFicheiro(input.files[0]);
+}
+
+function processarFicheiro(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+        planoMD = e.target.result;
+
+        // Auto-preenche nome se não preenchido
+        if (!document.getElementById('sess-nome').value) {
+            const match = planoMD.match(/^#\s+(.+)/m);
+            if (match) document.getElementById('sess-nome').value = match[1].replace(/[🔴🔵🟡🟢]/g, '').trim();
+        }
+
+        iniciarTreino();
+    };
+    reader.readAsText(file);
+}
+
+function semPlano() {
+    planoMD = '';
+    iniciarTreino();
+}
+
+// ---- PARSER MD ---- 
+function parsearMD(md) {
+    const blocos = [];
+    const linhas = md.split('\n');
+    let blocoAtual = null;
+    let tabelaAtual = null;
+    let emTabela = false;
+    let emBloco = false;
+    let avisoAtual = null;
+
+    for (let i = 0; i < linhas.length; i++) {
+        const linha = linhas[i].trim();
+
+        // Título principal
+        if (linha.startsWith('# ')) {
+            continue;
+        }
+
+        // Bloco (## )
+        if (linha.startsWith('## ')) {
+            if (blocoAtual) blocos.push(blocoAtual);
+            blocoAtual = {
+                titulo: linha.replace('## ', '').replace(/[🔴🔵🟡🟢⚙️]/g, '').trim(),
+                subtitulo: '',
+                tipo: 'normal',
+                exercicios: [],
+                avisos: [],
+                texto: []
+            };
+
+            // Detectar tipo
+            const t = blocoAtual.titulo.toLowerCase();
+            if (t.includes('wod') || t.includes('amrap') || t.includes('emom')) blocoAtual.tipo = 'wod';
+            if (t.includes('warm') || t.includes('aquecimento')) blocoAtual.tipo = 'warmup';
+            if (t.includes('pélvico') || t.includes('core') || t.includes('finisher')) blocoAtual.tipo = 'finisher';
+            if (t.includes('troca')) blocoAtual.tipo = 'info';
+
+            emTabela = false;
+            tabelaAtual = null;
+            continue;
+        }
+
+        if (!blocoAtual) continue;
+
+        // Subtítulo (bold lines com ** ** no início)
+        if (linha.startsWith('**') && linha.endsWith('**') && !linha.includes('|')) {
+            blocoAtual.subtitulo += linha.replace(/\*\*/g, '') + ' ';
+            continue;
+        }
+
+        // Avisos (> texto)
+        if (linha.startsWith('> ')) {
+            const texto = linha.replace('> ', '').replace(/\*\*/g, '');
+            if (!texto.startsWith('🎥')) {
+                blocoAtual.avisos.push(texto);
+            }
+            continue;
+        }
+
+        // Tabela
+        if (linha.startsWith('|')) {
+            const cells = linha.split('|').filter(c => c.trim() && !c.trim().match(/^-+$/));
+            if (cells.length === 0) continue;
+
+            // Header da tabela
+            if (!emTabela) {
+                emTabela = true;
+                tabelaAtual = { headers: cells.map(c => c.trim()), rows: [] };
+                continue;
+            }
+
+            // Linha separadora
+            if (linha.includes('---')) continue;
+
+            // Linha de dados
+            if (tabelaAtual && cells.length > 0) {
+                const row = cells.map(c => c.trim());
+                // Primeira coluna é o exercício
+                if (row[0] && !row[0].match(/^-+$/)) {
+                    tabelaAtual.rows.push(row);
+                }
+            }
+            continue;
+        } else {
+            // Fim de tabela — converter em exercícios
+            if (emTabela && tabelaAtual && tabelaAtual.rows.length > 0) {
+                for (const row of tabelaAtual.rows) {
+                    const ex = {
+                        nome: row[0] || '',
+                        reps: row[1] || '',
+                        notas: row[2] || '',
+                        peso_plano: '',
+                        feito: false
+                    };
+
+                    // Extrair peso do subtítulo do bloco
+                    const pesoMatch = blocoAtual.subtitulo.match(/(\d+[\.,]?\d*)\s*kg/);
+                    if (pesoMatch) ex.peso_plano = pesoMatch[1] + 'kg';
+
+                    if (ex.nome && ex.nome.length > 1) {
+                        blocoAtual.exercicios.push(ex);
+                    }
+                }
+                emTabela = false;
+                tabelaAtual = null;
+            }
+        }
+    }
+
+    if (blocoAtual) blocos.push(blocoAtual);
+    return blocos.filter(b => b.exercicios.length > 0 || b.tipo === 'wod');
+}
+
+// ---- INICIAR TREINO ----
+async function iniciarTreino() {
+    const nome = document.getElementById('sess-nome').value.trim() || 'Treino';
+    const data = document.getElementById('sess-data').value;
+
+    document.getElementById('passo-upload').style.display = 'none';
+    document.getElementById('passo-treino').style.display = 'block';
+
+    // Header
+    document.getElementById('sessao-header-info').innerHTML = `
+        <h2>${nome}</h2>
+        <div class="meta">${new Date(data + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+    `;
+
+    // Comparação com sessão anterior
+    await mostrarComparacao(nome);
+
+    // Parsear e renderizar plano
+    if (planoMD) {
+        blocosData = parsearMD(planoMD);
+        renderizarPlano();
+    } else {
+        renderizarSemPlano();
+    }
+}
+
+async function mostrarComparacao(nome) {
+    try {
+        const { data } = await db
+            .from('sessoes_treino')
+            .select('*, exercicios_sessao(*)')
+            .ilike('nome_treino', `%${nome.split(' ')[0]}%`)
+            .order('data', { ascending: false })
+            .limit(1);
+
+        if (data && data.length > 0) {
+            const s = data[0];
+            const dataFormatada = new Date(s.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+            const tempo = s.tempo_wod ? `${Math.floor(s.tempo_wod/60)}:${String(s.tempo_wod%60).padStart(2,'0')}` : '';
+            const rounds = s.rounds_completos ? `${s.rounds_completos} rondas` : '';
+
+            const el = document.getElementById('comparacao-anterior');
+            el.style.display = 'block';
+            el.innerHTML = `
+                <div class="comparacao-box">
+                    <strong>Última vez: ${dataFormatada}</strong>
+                    ${tempo ? ` · ⏱ ${tempo}` : ''}
+                    ${rounds ? ` · 🔄 ${rounds}` : ''}
+                    ${s.notas ? `<div style="margin-top:4px; color:var(--cinza-meio);">${s.notas}</div>` : ''}
+                </div>`;
+        }
+    } catch(e) {}
+}
+
+// ---- RENDERIZAR PLANO ----
+function renderizarPlano() {
+    const container = document.getElementById('plano-conteudo');
+    container.innerHTML = '';
+
+    blocosData.forEach((bloco, bi) => {
+        if (bloco.tipo === 'info') return;
+
+        const div = document.createElement('div');
+        div.className = 'bloco-treino';
+
+        const isWOD = bloco.tipo === 'wod';
+        const isWarmup = bloco.tipo === 'warmup';
+        const badgeClass = isWOD ? 'laranja' : isWarmup ? 'cinza' : '';
+        const badgeText = isWOD ? 'WOD' : isWarmup ? 'Warm-up' : 'Bloco';
+
+        div.innerHTML = `
+            <div class="bloco-header" onclick="toggleBloco(${bi})">
+                <div class="bloco-header-info">
+                    <div class="bloco-titulo">${bloco.titulo}</div>
+                    ${bloco.subtitulo ? `<div class="bloco-sub">${bloco.subtitulo.trim()}</div>` : ''}
+                </div>
+                <span class="bloco-badge ${badgeClass}">${badgeText}</span>
+            </div>
+            <div class="bloco-corpo" id="bloco-corpo-${bi}">
+                ${bloco.avisos.map(a => `<div class="warn-box">${a}</div>`).join('')}
+                ${isWOD ? renderCronometro() : ''}
+                ${bloco.exercicios.map((ex, ei) => renderExercicio(bi, ei, ex)).join('')}
+            </div>`;
+
+        container.appendChild(div);
+    });
+
+    atualizarProgresso();
+}
+
+function renderExercicio(bi, ei, ex) {
+    const id = `ex-${bi}-${ei}`;
+    return `
+        <div class="exercicio-item" id="${id}">
+            <div class="exercicio-nome-row">
+                <div class="exercicio-check" id="check-${id}" onclick="toggleFeito('${id}', ${bi}, ${ei})"></div>
+                <div class="exercicio-nome">${ex.nome}</div>
+            </div>
+            ${(ex.reps || ex.peso_plano) ? `
+            <div class="exercicio-plan">
+                ${ex.reps ? `<span>${ex.reps}</span>` : ''}
+                ${ex.peso_plano ? `<span>🏋️ ${ex.peso_plano}</span>` : ''}
+                ${ex.notas ? `<span style="background:none; padding:0; margin:0; color:var(--cinza-meio);">${ex.notas}</span>` : ''}
+            </div>` : ''}
+            <div class="exercicio-registo">
+                <div class="registo-campo">
+                    <label>Peso usado</label>
+                    <input type="text" id="peso-${id}" placeholder="${ex.peso_plano || 'kg'}" 
+                        oninput="autoFeito('${id}')">
+                </div>
+                <div class="registo-campo">
+                    <label>Reps / Séries</label>
+                    <input type="text" id="reps-${id}" placeholder="${ex.reps || 'reps'}"
+                        oninput="autoFeito('${id}')">
+                </div>
+            </div>
+            <div class="notas-exercicio">
+                <textarea id="nota-${id}" placeholder="Notas (opcional)..." rows="1"
+                    onfocus="this.rows=3" onblur="if(!this.value)this.rows=1"></textarea>
+            </div>
+        </div>`;
+}
+
+function renderCronometro() {
+    return `
+        <div class="cronometro-wrap">
+            <div class="cron-titulo">Cronómetro WOD</div>
+            <div class="cron-display" id="cron-display">00:00</div>
+            <div class="cron-btns">
+                <button class="cron-btn start" id="cron-start" onclick="toggleCronometro()">▶ Iniciar</button>
+                <button class="cron-btn reset" onclick="resetCronometro()">↩ Reset</button>
+            </div>
+            <div class="cron-rondas">
+                <span class="cron-rondas-label">Rondas:</span>
+                <div class="cron-rondas-btns">
+                    <button onclick="ajustarRondas(-1)">−</button>
+                </div>
+                <span class="cron-rondas-val" id="cron-rondas">0</span>
+                <div class="cron-rondas-btns">
+                    <button onclick="ajustarRondas(1)">+</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function renderizarSemPlano() {
+    const container = document.getElementById('plano-conteudo');
+    container.innerHTML = `
+        <div class="card">
+            <div class="card-titulo">Registar exercícios</div>
+            <div id="exercicios-livres"></div>
+            <button class="btn btn-secundario" style="width:100%; margin-top:8px;" onclick="adicionarExercicioLivre()">
+                + Adicionar exercício
+            </button>
+        </div>
+        ${renderCronometro()}`;
+
+    adicionarExercicioLivre();
+}
+
+let contadorLivre = 0;
+function adicionarExercicioLivre() {
+    const id = `livre-${contadorLivre++}`;
+    const div = document.createElement('div');
+    div.className = 'exercicio-item';
+    div.id = id;
+    div.innerHTML = `
+        <div class="exercicio-nome-row">
+            <div class="exercicio-check" id="check-${id}" onclick="toggleFeitoLivre('${id}')"></div>
+            <input type="text" placeholder="Nome do exercício" id="nome-${id}"
+                style="flex:1; border:none; background:none; font-weight:600; font-size:0.9rem; font-family:'DM Sans',sans-serif; outline:none; color:var(--azul-escuro);">
+        </div>
+        <div class="exercicio-registo">
+            <div class="registo-campo">
+                <label>Peso</label>
+                <input type="text" id="peso-${id}" placeholder="kg">
+            </div>
+            <div class="registo-campo">
+                <label>Reps / Séries</label>
+                <input type="text" id="reps-${id}" placeholder="reps">
+            </div>
+        </div>`;
+    document.getElementById('exercicios-livres').appendChild(div);
+}
+
+// ---- INTERAÇÕES ----
+function toggleBloco(bi) {
+    const corpo = document.getElementById(`bloco-corpo-${bi}`);
+    corpo.style.display = corpo.style.display === 'none' ? 'block' : 'none';
+}
+
+function toggleFeito(id, bi, ei) {
+    const check = document.getElementById(`check-${id}`);
+    const item = document.getElementById(id);
+    const feito = !check.classList.contains('checked');
+
+    check.classList.toggle('checked', feito);
+    check.innerHTML = feito ? '✓' : '';
+    item.classList.toggle('feito', feito);
+
+    if (feito) exerciciosFeitos.add(id);
+    else exerciciosFeitos.delete(id);
+
+    atualizarProgresso();
+}
+
+function toggleFeitoLivre(id) {
+    const check = document.getElementById(`check-${id}`);
+    const item = document.getElementById(id);
+    const feito = !check.classList.contains('checked');
+    check.classList.toggle('checked', feito);
+    check.innerHTML = feito ? '✓' : '';
+    item.classList.toggle('feito', feito);
+}
+
+function autoFeito(id) {
+    const peso = document.getElementById(`peso-${id}`)?.value;
+    const reps = document.getElementById(`reps-${id}`)?.value;
+    if ((peso || reps) && !exerciciosFeitos.has(id)) {
+        // não auto-marca, deixa utilizador marcar manualmente
+    }
+}
+
+function atualizarProgresso() {
+    const total = blocosData.reduce((sum, b) => sum + b.exercicios.length, 0);
+    const feitos = exerciciosFeitos.size;
+    const pct = total > 0 ? (feitos / total) * 100 : 0;
+    document.getElementById('progresso-fill').style.width = pct + '%';
+}
+
+// ---- CRONÓMETRO ----
+function toggleCronometro() {
+    if (cronometroAtivo) {
+        clearInterval(cronometroInterval);
+        cronometroAtivo = false;
+        document.getElementById('cron-start').textContent = '▶ Continuar';
+        document.getElementById('cron-start').className = 'cron-btn start';
+    } else {
+        cronometroAtivo = true;
+        document.getElementById('cron-start').textContent = '⏸ Parar';
+        document.getElementById('cron-start').className = 'cron-btn stop';
+        cronometroInterval = setInterval(() => {
+            cronometroSegundos++;
+            atualizarDisplayCron();
+        }, 1000);
+    }
+}
+
+function resetCronometro() {
+    clearInterval(cronometroInterval);
+    cronometroAtivo = false;
+    cronometroSegundos = 0;
+    atualizarDisplayCron();
+    document.getElementById('cron-start').textContent = '▶ Iniciar';
+    document.getElementById('cron-start').className = 'cron-btn start';
+}
+
+function atualizarDisplayCron() {
+    const m = Math.floor(cronometroSegundos / 60);
+    const s = cronometroSegundos % 60;
+    document.getElementById('cron-display').textContent =
+        `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function ajustarRondas(delta) {
+    rondasWOD = Math.max(0, rondasWOD + delta);
+    document.getElementById('cron-rondas').textContent = rondasWOD;
+}
+
+// ---- GUARDAR ----
+async function guardarSessaoCompleta() {
+    const nome = document.getElementById('sess-nome').value.trim() || 'Treino';
+    const data = document.getElementById('sess-data').value;
+    const notas = document.getElementById('sess-notas').value.trim();
+
+    if (!data) { mostrarToast('Escolhe uma data'); return; }
+
+    // Determinar tipo
+    let tipo = 'Treino';
+    const n = nome.toLowerCase();
+    if (n.includes('completo')) tipo = 'WOD';
+    else if (n.includes('força') || n.includes('forca')) tipo = 'Força';
+    else if (n.includes('cardio')) tipo = 'Cardio';
+    else if (n.includes('mobilidade')) tipo = 'Mobilidade';
+
+    const payload = {
+        data,
+        nome_treino: nome,
+        tipo,
+        tempo_wod: cronometroSegundos > 0 ? cronometroSegundos : null,
+        rounds_completos: rondasWOD > 0 ? rondasWOD : null,
+        notas: notas || null,
+        sugestoes_claude: null
+    };
+
+    const { data: sessao, error } = await db
+        .from('sessoes_treino')
+        .insert(payload)
+        .select()
+        .single();
+
+    if (error) {
+        mostrarToast('Erro ao guardar 😕');
+        console.error(error);
+        return;
+    }
+
+    // Guardar exercícios
+    const exercicios = [];
+
+    if (blocosData.length > 0) {
+        let ordem = 0;
+        blocosData.forEach((bloco, bi) => {
+            bloco.exercicios.forEach((ex, ei) => {
+                const id = `ex-${bi}-${ei}`;
+                const peso = document.getElementById(`peso-${id}`)?.value.trim();
+                const reps = document.getElementById(`reps-${id}`)?.value.trim();
+                const nota = document.getElementById(`nota-${id}`)?.value.trim();
+
+                if (peso || reps || exerciciosFeitos.has(id)) {
+                    exercicios.push({
+                        sessao_id: sessao.id,
+                        nome: ex.nome,
+                        series: null,
+                        reps: reps || ex.reps || null,
+                        peso_kg: peso ? parseFloat(peso.replace(',', '.').replace('kg','')) : null,
+                        notas: nota || null,
+                        ordem: ordem++
+                    });
+                }
+            });
+        });
+    }
+
+    // Exercícios livres
+    document.querySelectorAll('[id^="livre-"]').forEach(el => {
+        const id = el.id;
+        const nome = document.getElementById(`nome-${id}`)?.value.trim();
+        const peso = document.getElementById(`peso-${id}`)?.value.trim();
+        const reps = document.getElementById(`reps-${id}`)?.value.trim();
+        if (nome) {
+            exercicios.push({
+                sessao_id: sessao.id,
+                nome,
+                reps: reps || null,
+                peso_kg: peso ? parseFloat(peso.replace(',', '.').replace('kg','')) : null,
+                notas: null,
+                ordem: exercicios.length
+            });
+        }
+    });
+
+    if (exercicios.length > 0) {
+        await db.from('exercicios_sessao').insert(exercicios);
+    }
+
+    mostrarToast('Sessão guardada ✓');
+    setTimeout(() => window.location.href = 'index.html', 1200);
+}
+
+</script>
+</body>
+</html>
