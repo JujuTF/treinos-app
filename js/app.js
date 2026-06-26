@@ -321,16 +321,16 @@ function calcularFase(diasCiclo) {
 
 async function carregarCicloResumido() {
     try {
-        const { data } = await db
+        const { data: rows } = await db
             .from('ciclo_menstrual')
             .select('*')
             .order('inicio', { ascending: false })
-            .limit(1)
-            .single();
+            .limit(1);
 
         const container = document.getElementById('ciclo-info');
         if (!container) return;
 
+        const data = rows && rows.length > 0 ? rows[0] : null;
         if (!data) {
             container.innerHTML = `<span style="color:var(--cinza-meio); font-size:0.9rem;">Sem registos. Vai ao separador Ciclo para adicionar.</span>`;
             return;
