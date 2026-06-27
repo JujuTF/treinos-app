@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Saúde & Bem-Estar</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+    <style>
+        /* ---- TABS ---- */
+        .tabs {
+            display: flex;
+            background: var(--branco);
+            border-radius: var(--radius);
+            padding: 4px;
+            margin-bottom: 16px;
+            box-shadow: var(--sombra);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 9px 4px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: none;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--cinza-meio);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .tab-btn.active {
+            background: var(--verde);
+            color: white;
+        }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ---- HISTÓRICO ---- */
+        .dia-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--cinza-claro);
+        }
+
+        .dia-item:last-child { border-bottom: none; }
+
+        .dia-data {
+            text-align: center;
+            min-width: 44px;
+        }
+
+        .dia-data-num { font-size: 1.2rem; font-weight: 700; color: var(--azul-escuro); line-height: 1; }
+        .dia-data-mes { font-size: 0.65rem; color: var(--cinza-meio); text-transform: uppercase; font-weight: 600; }
+
+        .dia-info { flex: 1; }
+        .dia-emojis { font-size: 1.1rem; letter-spacing: 2px; }
+        .dia-detalhe { font-size: 0.75rem; color: var(--cinza-meio); margin-top: 2px; }
+
+        .dia-agua {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--verde);
+            font-weight: 600;
+        }
+
+        /* ---- CRUZAMENTO GRÁFICO ---- */
+        .fase-cor {
+            display: inline-block;
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        .energia-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .energia-bar-label {
+            font-size: 0.75rem;
+            color: var(--cinza-meio);
+            width: 80px;
+            flex-shrink: 0;
+        }
+
+        .energia-bar-wrap {
+            flex: 1;
+            background: var(--cinza-claro);
+            border-radius: 99px;
+            height: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .energia-bar-fill {
+            height: 100%;
+            border-radius: 99px;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: white;
+            transition: width 0.6s ease;
+        }
+
+        .energia-bar-val {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--cinza-meio);
+            width: 30px;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        /* ---- META ÁGUA ---- */
+        .meta-input-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .meta-input-row input {
+            width: 90px;
+            padding: 8px 10px;
+            border: 1.5px solid var(--cinza-borda);
+            border-radius: var(--radius-sm);
+            font-family: 'DM Mono', monospace;
+            font-size: 0.95rem;
+            text-align: center;
+            outline: none;
+        }
+
+        .meta-input-row input:focus { border-color: var(--verde); }
+
+        /* ---- FLARE BADGE ---- */
+        .flare-badge {
+            background: #FEF3EE;
+            color: var(--laranja);
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 99px;
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <a href="index.html" style="color:var(--cinza-meio); display:flex;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <h1>Saúde & Bem-Estar</h1>
+    </div>
+    <span class="header-data" id="header-data"></span>
+</header>
+
+<div class="page active" id="page-saude">
+
+    <!-- TABS -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="mudarTab('diario')">📋 Diário</button>
+        <button class="tab-btn" onclick="mudarTab('historico')">📅 Histórico</button>
+        <button class="tab-btn" onclick="mudarTab('cruzamento')">📊 Ciclo</button>
+        <button class="tab-btn" onclick="mudarTab('agua')">💧 Água</button>
+    </div>
+
+    <!-- TAB: DIÁRIO HOJE -->
+    <div class="tab-panel active" id="tab-diario">
+
+        <div class="card">
+            <div class="card-titulo">Como estás hoje?</div>
+
+            <div class="form-grupo" style="margin-bottom:10px;">
+                <label>Energia</label>
+                <div class="energia-picker" id="energia-picker">
+                    <button class="energia-btn" data-val="1" title="Muito baixa">😴</button>
+                    <button class="energia-btn" data-val="2" title="Baixa">😑</button>
+                    <button class="energia-btn" data-val="3" title="Ok">🙂</button>
+                    <button class="energia-btn" data-val="4" title="Bem">💪</button>
+                    <button class="energia-btn" data-val="5" title="Excelente">🔥</button>
+                </div>
+            </div>
+
+            <div class="form-grupo" style="margin-bottom:10px;">
+                <label>Horas de sono</label>
+                <div class="sono-input-wrap">
+                    <input type="number" id="sono-horas" min="0" max="24" step="0.5" placeholder="7.5">
+                    <span style="color:var(--cinza-meio); font-size:0.9rem;">horas</span>
+                </div>
+            </div>
+
+            <div class="toggle-row" style="margin-bottom:14px;">
+                <span class="toggle-label">🌪️ Flare de fibromialgia</span>
+                <label class="toggle">
+                    <input type="checkbox" id="flare-toggle">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+
+            <div class="form-grupo" style="margin-bottom:14px;">
+                <label>Notas do dia</label>
+                <textarea id="notas-dia" placeholder="Como te sentes? Algum sintoma especial..." style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Sans',sans-serif; font-size:0.9rem; resize:vertical; min-height:70px; outline:none;"></textarea>
+            </div>
+
+            <button class="btn btn-primario" onclick="guardarDiario()">Guardar dia</button>
+        </div>
+
+        <!-- Hidratação hoje -->
+        <div class="card">
+            <div class="card-titulo">Hidratação hoje</div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                <span class="agua-ml" id="agua-atual-saude">0 ml</span>
+                <span style="font-size:0.8rem; color:var(--cinza-meio);">meta: <span id="agua-meta-saude">2000</span> ml</span>
+            </div>
+            <div class="agua-bar">
+                <div class="agua-fill" id="agua-fill-saude" style="width:0%"></div>
+            </div>
+            <div class="agua-controls">
+                <button onclick="addAgua(200)">+200 ml</button>
+                <button onclick="addAgua(250)">+250 ml</button>
+                <button onclick="addAgua(500)">+500 ml</button>
+            </div>
+            <div style="margin-top:8px; text-align:right;">
+                <button onclick="resetAgua()" style="background:none; border:none; color:var(--cinza-meio); font-size:0.8rem; cursor:pointer;">↩ repor</button>
+            </div>
+        </div>
+
+        <!-- Fase do ciclo hoje -->
+        <div class="card" id="ciclo-hoje-card">
+            <div class="card-titulo">Ciclo menstrual</div>
+            <div id="ciclo-hoje-info" style="color:var(--cinza-meio); font-size:0.9rem;">A calcular...</div>
+        </div>
+
+    </div>
+
+    <!-- TAB: HISTÓRICO -->
+    <div class="tab-panel" id="tab-historico">
+        <div class="card">
+            <div class="card-titulo">Últimos 30 dias</div>
+            <div id="historico-lista" style="color:var(--cinza-meio); font-size:0.9rem;">A carregar...</div>
+        </div>
+    </div>
+
+    <!-- TAB: CRUZAMENTO CICLO + ENERGIA -->
+    <div class="tab-panel" id="tab-cruzamento">
+        <div class="card">
+            <div class="card-titulo">Energia média por fase do ciclo</div>
+            <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:16px;">Baseado nos teus registos de energia cruzados com as fases do ciclo.</p>
+            <div id="cruzamento-grafico">
+                <div style="color:var(--cinza-meio); font-size:0.9rem;">A calcular...</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Flares por fase</div>
+            <div id="flares-por-fase" style="color:var(--cinza-meio); font-size:0.9rem;">A calcular...</div>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Treinos por fase</div>
+            <div id="treinos-por-fase" style="color:var(--cinza-meio); font-size:0.9rem;">A calcular...</div>
+        </div>
+    </div>
+
+    <!-- TAB: ÁGUA -->
+    <div class="tab-panel" id="tab-agua">
+        <div class="card">
+            <div class="card-titulo">Meta diária de água</div>
+            <p style="font-size:0.85rem; color:var(--cinza-meio);">A tua meta atual é <strong id="meta-atual-label">2000 ml</strong>.</p>
+            <div class="meta-input-row">
+                <input type="number" id="nova-meta" placeholder="2000" min="500" max="5000" step="250">
+                <span style="color:var(--cinza-meio); font-size:0.9rem;">ml</span>
+                <button class="btn btn-secundario" onclick="guardarMeta()">Guardar</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Histórico de hidratação</div>
+            <div id="historico-agua" style="color:var(--cinza-meio); font-size:0.9rem;">A carregar...</div>
+        </div>
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+
+// ---- AUTH ----
+async function verificarAuth() {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) window.location.href = 'login.html';
+}
+verificarAuth();
+
+// ---- ESTADO ----
+let estadoDia = { energia: null, agua_ml: 0, meta_agua_ml: 2000 };
+
+const FASES = [
+    { nome: 'Menstrual',  emoji: '🔴', dias: [1, 5],   cor: '#F87171' },
+    { nome: 'Folicular',  emoji: '🌱', dias: [6, 13],  cor: '#4ADE80' },
+    { nome: 'Ovulação',   emoji: '✨', dias: [14, 16], cor: '#FACC15' },
+    { nome: 'Lútea',      emoji: '🌙', dias: [17, 28], cor: '#A78BFA' }
+];
+
+function calcularFase(diasCiclo) {
+    for (const f of FASES) {
+        if (diasCiclo >= f.dias[0] && diasCiclo <= f.dias[1]) return f;
+    }
+    return FASES[3];
+}
+
+// ---- INIT ----
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('header-data').textContent = new Date().toLocaleDateString('pt-PT', {
+        weekday: 'short', day: 'numeric', month: 'long'
+    });
+
+    await carregarDiaHoje();
+    await carregarCicloHoje();
+});
+
+function hoje() {
+    return new Date().toISOString().split('T')[0];
+}
+
+function mostrarToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ---- TABS ----
+function mudarTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        const tabs = ['diario', 'historico', 'cruzamento', 'agua'];
+        b.classList.toggle('active', tabs[i] === tab);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+
+    // Carregar dados só quando necessário
+    if (tab === 'historico') carregarHistorico();
+    if (tab === 'cruzamento') carregarCruzamento();
+    if (tab === 'agua') carregarHistoricoAgua();
+}
+
+// ---- ENERGIA PICKER ----
+document.getElementById('energia-picker')?.addEventListener('click', e => {
+    const btn = e.target.closest('.energia-btn');
+    if (!btn) return;
+    document.querySelectorAll('.energia-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    estadoDia.energia = parseInt(btn.dataset.val);
+});
+
+// ---- CARREGAR DIA ----
+async function carregarDiaHoje() {
+    try {
+        const { data } = await db
+            .from('registo_diario')
+            .select('*')
+            .eq('data', hoje())
+            .limit(1);
+
+        const d = data && data.length > 0 ? data[0] : null;
+        if (!d) return;
+
+        estadoDia = { ...estadoDia, ...d };
+
+        if (d.energia) {
+            document.querySelectorAll('.energia-btn').forEach(b => {
+                if (parseInt(b.dataset.val) === d.energia) b.classList.add('selected');
+            });
+        }
+        if (d.horas_sono) document.getElementById('sono-horas').value = d.horas_sono;
+        if (d.flare_fibromialgia) document.getElementById('flare-toggle').checked = true;
+        if (d.notas) document.getElementById('notas-dia').value = d.notas;
+
+        estadoDia.agua_ml = d.agua_ml || 0;
+        estadoDia.meta_agua_ml = d.meta_agua_ml || 2000;
+        atualizarAgua();
+
+    } catch(e) {}
+}
+
+// ---- GUARDAR DIA ----
+async function guardarDiario() {
+    const payload = {
+        data: hoje(),
+        energia: estadoDia.energia,
+        horas_sono: parseFloat(document.getElementById('sono-horas').value) || null,
+        flare_fibromialgia: document.getElementById('flare-toggle').checked,
+        notas: document.getElementById('notas-dia').value.trim() || null,
+        agua_ml: estadoDia.agua_ml,
+        meta_agua_ml: estadoDia.meta_agua_ml
+    };
+
+    const { error } = await db
+        .from('registo_diario')
+        .upsert(payload, { onConflict: 'data' });
+
+    if (error) { mostrarToast('Erro ao guardar 😕'); return; }
+    mostrarToast('Dia guardado ✓');
+}
+
+// ---- ÁGUA ----
+function atualizarAgua() {
+    const ml = estadoDia.agua_ml || 0;
+    const meta = estadoDia.meta_agua_ml || 2000;
+    const pct = Math.min(100, (ml / meta) * 100);
+
+    document.getElementById('agua-atual-saude').textContent = ml + ' ml';
+    document.getElementById('agua-fill-saude').style.width = pct + '%';
+    document.getElementById('agua-meta-saude').textContent = meta;
+    document.getElementById('meta-atual-label').textContent = meta + ' ml';
+
+    const novaMetaInput = document.getElementById('nova-meta');
+    if (novaMetaInput) novaMetaInput.value = meta;
+}
+
+async function addAgua(ml) {
+    estadoDia.agua_ml = (estadoDia.agua_ml || 0) + ml;
+    atualizarAgua();
+    await db.from('registo_diario').upsert({
+        data: hoje(),
+        agua_ml: estadoDia.agua_ml,
+        meta_agua_ml: estadoDia.meta_agua_ml
+    }, { onConflict: 'data' });
+}
+
+async function resetAgua() {
+    estadoDia.agua_ml = 0;
+    atualizarAgua();
+    await db.from('registo_diario').upsert({
+        data: hoje(), agua_ml: 0, meta_agua_ml: estadoDia.meta_agua_ml
+    }, { onConflict: 'data' });
+}
+
+async function guardarMeta() {
+    const nova = parseInt(document.getElementById('nova-meta').value);
+    if (!nova || nova < 500) { mostrarToast('Meta inválida'); return; }
+    estadoDia.meta_agua_ml = nova;
+    atualizarAgua();
+    await db.from('registo_diario').upsert({
+        data: hoje(), agua_ml: estadoDia.agua_ml, meta_agua_ml: nova
+    }, { onConflict: 'data' });
+    mostrarToast('Meta atualizada ✓');
+}
+
+// ---- CICLO HOJE ----
+async function carregarCicloHoje() {
+    try {
+        const { data: rows } = await db
+            .from('ciclo_menstrual')
+            .select('*')
+            .order('inicio', { ascending: false })
+            .limit(1);
+
+        const el = document.getElementById('ciclo-hoje-info');
+        if (!rows || rows.length === 0) {
+            el.innerHTML = '<span>Sem registos. <a href="ciclo.html" style="color:var(--verde);">Adicionar ciclo →</a></span>';
+            return;
+        }
+
+        const ultimo = rows[0];
+        const inicio = new Date(ultimo.inicio + 'T00:00:00');
+        const diasCiclo = Math.floor((new Date() - inicio) / (1000*60*60*24)) + 1;
+        const fase = calcularFase(diasCiclo);
+
+        el.innerHTML = `
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span style="font-size:2rem;">${fase.emoji}</span>
+                <div>
+                    <div style="font-weight:700; color:var(--azul-escuro);">${fase.nome} — dia ${diasCiclo}</div>
+                    <div style="font-size:0.78rem; color:var(--cinza-meio); margin-top:2px;">
+                        Ciclo iniciado em ${new Date(ultimo.inicio + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' })}
+                    </div>
+                </div>
+                <a href="ciclo.html" style="margin-left:auto; color:var(--verde); font-size:0.8rem; font-weight:600; text-decoration:none;">Ver →</a>
+            </div>`;
+    } catch(e) {}
+}
+
+// ---- HISTÓRICO ----
+async function carregarHistorico() {
+    const el = document.getElementById('historico-lista');
+    el.innerHTML = 'A carregar...';
+
+    const { data } = await db
+        .from('registo_diario')
+        .select('*')
+        .order('data', { ascending: false })
+        .limit(30);
+
+    if (!data || data.length === 0) {
+        el.innerHTML = '<div style="color:var(--cinza-meio);">Sem registos ainda.</div>';
+        return;
+    }
+
+    const energiaEmoji = ['', '😴', '😑', '🙂', '💪', '🔥'];
+
+    el.innerHTML = data.map(d => {
+        const dt = new Date(d.data + 'T00:00:00');
+        const dia = dt.getDate();
+        const mes = dt.toLocaleDateString('pt-PT', { month: 'short' });
+        const semana = dt.toLocaleDateString('pt-PT', { weekday: 'short' });
+        const agua = d.agua_ml || 0;
+        const meta = d.meta_agua_ml || 2000;
+        const aguaPct = Math.min(100, Math.round((agua / meta) * 100));
+
+        return `
+            <div class="dia-item">
+                <div class="dia-data">
+                    <div class="dia-data-num">${dia}</div>
+                    <div class="dia-data-mes">${mes}</div>
+                </div>
+                <div class="dia-info">
+                    <div class="dia-emojis">
+                        ${d.energia ? energiaEmoji[d.energia] : '—'}
+                        ${d.horas_sono ? '😴' + d.horas_sono + 'h' : ''}
+                        ${d.flare_fibromialgia ? '<span class="flare-badge">🌪️ flare</span>' : ''}
+                    </div>
+                    <div class="dia-detalhe">${semana}${d.notas ? ' · ' + d.notas.substring(0, 40) + (d.notas.length > 40 ? '...' : '') : ''}</div>
+                </div>
+                <div class="dia-agua" title="${agua}ml de ${meta}ml">
+                    ${aguaPct}%<br>
+                    <span style="font-size:0.65rem; color:var(--cinza-meio);">água</span>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+// ---- CRUZAMENTO CICLO + ENERGIA ----
+async function carregarCruzamento() {
+    // Buscar ciclos e registos
+    const [{ data: ciclos }, { data: registos }, { data: sessoes }] = await Promise.all([
+        db.from('ciclo_menstrual').select('*').order('inicio', { ascending: true }),
+        db.from('registo_diario').select('data, energia, flare_fibromialgia').order('data', { ascending: true }),
+        db.from('sessoes_treino').select('data').order('data', { ascending: true })
+    ]);
+
+    if (!ciclos || ciclos.length === 0 || !registos || registos.length === 0) {
+        document.getElementById('cruzamento-grafico').innerHTML = '<div style="color:var(--cinza-meio);">Precisas de registos de ciclo e energia para ver este gráfico.</div>';
+        document.getElementById('flares-por-fase').innerHTML = '<div style="color:var(--cinza-meio);">Sem dados suficientes.</div>';
+        document.getElementById('treinos-por-fase').innerHTML = '<div style="color:var(--cinza-meio);">Sem dados suficientes.</div>';
+        return;
+    }
+
+    // Para cada registo, calcular a fase
+    const dadosPorFase = {
+        'Menstrual':  { energias: [], flares: 0, treinos: 0, total: 0 },
+        'Folicular':  { energias: [], flares: 0, treinos: 0, total: 0 },
+        'Ovulação':   { energias: [], flares: 0, treinos: 0, total: 0 },
+        'Lútea':      { energias: [], flares: 0, treinos: 0, total: 0 }
+    };
+
+    for (const reg of registos) {
+        const dataReg = new Date(reg.data + 'T00:00:00');
+
+        // Encontrar o ciclo ativo nessa data
+        let cicloAtivo = null;
+        for (const c of ciclos) {
+            const inicio = new Date(c.inicio + 'T00:00:00');
+            const fim = c.fim ? new Date(c.fim + 'T00:00:00') : new Date(inicio.getTime() + 28 * 24*60*60*1000);
+            if (dataReg >= inicio && dataReg <= fim) {
+                cicloAtivo = c;
+                break;
+            }
+            // Também considerar se estamos dentro de 28 dias do último início
+            if (!cicloAtivo && c === ciclos[ciclos.length - 1]) {
+                const diasDesde = Math.floor((dataReg - inicio) / (1000*60*60*24));
+                if (diasDesde >= 0 && diasDesde <= 35) {
+                    cicloAtivo = c;
+                }
+            }
+        }
+
+        if (!cicloAtivo) continue;
+
+        const inicio = new Date(cicloAtivo.inicio + 'T00:00:00');
+        const diasCiclo = Math.floor((dataReg - inicio) / (1000*60*60*24)) + 1;
+        if (diasCiclo < 1 || diasCiclo > 35) continue;
+
+        const fase = calcularFase(diasCiclo);
+        const f = dadosPorFase[fase.nome];
+        f.total++;
+        if (reg.energia) f.energias.push(reg.energia);
+        if (reg.flare_fibromialgia) f.flares++;
+    }
+
+    // Cruzar treinos com fases
+    if (sessoes) {
+        for (const s of sessoes) {
+            const dataS = new Date(s.data + 'T00:00:00');
+            let cicloAtivo = null;
+            for (const c of ciclos) {
+                const inicio = new Date(c.inicio + 'T00:00:00');
+                const diasDesde = Math.floor((dataS - inicio) / (1000*60*60*24));
+                if (diasDesde >= 0 && diasDesde <= 35) { cicloAtivo = c; break; }
+            }
+            if (!cicloAtivo) continue;
+            const inicio = new Date(cicloAtivo.inicio + 'T00:00:00');
+            const diasCiclo = Math.floor((dataS - inicio) / (1000*60*60*24)) + 1;
+            if (diasCiclo < 1 || diasCiclo > 35) continue;
+            const fase = calcularFase(diasCiclo);
+            dadosPorFase[fase.nome].treinos++;
+        }
+    }
+
+    // Renderizar gráfico de energia
+    const graficoEl = document.getElementById('cruzamento-grafico');
+    graficoEl.innerHTML = FASES.map(f => {
+        const dados = dadosPorFase[f.nome];
+        const media = dados.energias.length > 0
+            ? (dados.energias.reduce((a,b) => a+b, 0) / dados.energias.length).toFixed(1)
+            : null;
+        const pct = media ? (parseFloat(media) / 5) * 100 : 0;
+        const n = dados.energias.length;
+
+        return `
+            <div class="energia-bar-row">
+                <div class="energia-bar-label">
+                    ${f.emoji} ${f.nome}
+                </div>
+                <div class="energia-bar-wrap">
+                    <div class="energia-bar-fill" style="width:${pct}%; background:${f.cor};">
+                        ${media ? media + '/5' : ''}
+                    </div>
+                </div>
+                <div class="energia-bar-val">${n > 0 ? n + 'd' : '—'}</div>
+            </div>`;
+    }).join('');
+
+    // Flares por fase
+    const flaresEl = document.getElementById('flares-por-fase');
+    flaresEl.innerHTML = FASES.map(f => {
+        const dados = dadosPorFase[f.nome];
+        const pct = dados.total > 0 ? Math.round((dados.flares / dados.total) * 100) : 0;
+        return `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--cinza-claro);">
+                <span style="font-size:0.9rem;">${f.emoji} ${f.nome}</span>
+                <div style="text-align:right;">
+                    <span style="font-weight:700; color:${dados.flares > 0 ? 'var(--laranja)' : 'var(--cinza-meio)'};">${dados.flares} flares</span>
+                    <span style="font-size:0.75rem; color:var(--cinza-meio); margin-left:4px;">(${pct}% dos dias)</span>
+                </div>
+            </div>`;
+    }).join('');
+
+    // Treinos por fase
+    const treEl = document.getElementById('treinos-por-fase');
+    treEl.innerHTML = FASES.map(f => {
+        const dados = dadosPorFase[f.nome];
+        const media = dados.total > 0 ? (dados.treinos / dados.total * 7).toFixed(1) : 0;
+        return `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--cinza-claro);">
+                <span style="font-size:0.9rem;">${f.emoji} ${f.nome}</span>
+                <div style="text-align:right;">
+                    <span style="font-weight:700; color:var(--azul-escuro);">${dados.treinos} treinos</span>
+                    <span style="font-size:0.75rem; color:var(--cinza-meio); margin-left:4px;">(~${media}/semana)</span>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+// ---- HISTÓRICO ÁGUA ----
+async function carregarHistoricoAgua() {
+    const el = document.getElementById('historico-agua');
+    const { data } = await db
+        .from('registo_diario')
+        .select('data, agua_ml, meta_agua_ml')
+        .order('data', { ascending: false })
+        .limit(14);
+
+    if (!data || data.length === 0) {
+        el.innerHTML = '<div style="color:var(--cinza-meio);">Sem registos ainda.</div>';
+        return;
+    }
+
+    el.innerHTML = data.map(d => {
+        const dt = new Date(d.data + 'T00:00:00');
+        const agua = d.agua_ml || 0;
+        const meta = d.meta_agua_ml || 2000;
+        const pct = Math.min(100, Math.round((agua / meta) * 100));
+        const cor = pct >= 100 ? 'var(--verde)' : pct >= 60 ? 'var(--laranja)' : '#EF4444';
+
+        return `
+            <div style="padding:10px 0; border-bottom:1px solid var(--cinza-claro);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                    <span style="font-size:0.85rem; font-weight:500;">
+                        ${dt.toLocaleDateString('pt-PT', { weekday: 'short', day: 'numeric', month: 'short' })}
+                    </span>
+                    <span style="font-family:'DM Mono',monospace; font-size:0.85rem; color:${cor}; font-weight:600;">
+                        ${agua} / ${meta} ml
+                    </span>
+                </div>
+                <div style="background:var(--cinza-claro); border-radius:99px; height:6px; overflow:hidden;">
+                    <div style="height:100%; width:${pct}%; background:${cor}; border-radius:99px; transition:width 0.4s;"></div>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+</script>
+</body>
+</html>

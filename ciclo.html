@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Ciclo Menstrual</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+    <style>
+        .fase-card {
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 12px;
+            color: white;
+        }
+
+        .fase-card h3 { font-size: 1.1rem; font-weight: 700; }
+        .fase-card .fase-dia { font-size: 0.85rem; opacity: 0.85; margin-top: 2px; }
+        .fase-card .fase-desc { font-size: 0.82rem; opacity: 0.9; margin-top: 10px; line-height: 1.5; }
+
+        .ciclo-barra {
+            display: flex;
+            border-radius: 99px;
+            overflow: hidden;
+            height: 14px;
+            margin: 16px 0 8px;
+        }
+
+        .ciclo-barra-seg {
+            height: 100%;
+            position: relative;
+            transition: opacity 0.2s;
+        }
+
+        .ciclo-barra-seg.atual { outline: 3px solid white; outline-offset: -1px; }
+
+        .ciclo-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 4px;
+        }
+
+        .ciclo-marcador {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .historico-ciclo-item {
+            padding: 12px 0;
+            border-bottom: 1px solid var(--cinza-claro);
+        }
+
+        .historico-ciclo-item:last-child { border-bottom: none; }
+
+        .duracao-badge {
+            background: var(--verde-claro);
+            color: var(--verde);
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 99px;
+        }
+
+        .proxima-info {
+            background: var(--fundo);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 0.82rem;
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <a href="index.html" style="color:var(--cinza-meio); display:flex;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <h1>Ciclo Menstrual</h1>
+    </div>
+    <button class="btn btn-secundario" style="width:auto; padding:8px 14px; font-size:0.85rem;" onclick="abrirModal()">
+        + Registo
+    </button>
+</header>
+
+<div class="page active">
+
+    <!-- FASE ATUAL -->
+    <div id="fase-atual-card">
+        <div style="background:var(--cinza-claro); border-radius:var(--radius); padding:20px; margin-bottom:12px; text-align:center; color:var(--cinza-meio);">
+            A calcular fase atual...
+        </div>
+    </div>
+
+    <!-- PRÓXIMAS FASES -->
+    <div class="card" id="proximas-fases-card" style="display:none;">
+        <div class="card-titulo">Próximas fases</div>
+        <div id="proximas-fases"></div>
+    </div>
+
+    <!-- HISTÓRICO -->
+    <div class="card">
+        <div class="card-titulo">Histórico de ciclos</div>
+        <div id="historico-ciclos" style="color:var(--cinza-meio); font-size:0.9rem;">A carregar...</div>
+    </div>
+
+</div>
+
+<!-- MODAL REGISTO -->
+<div class="modal-overlay" id="modal-ciclo">
+    <div class="modal">
+        <div class="modal-titulo">Registo de ciclo</div>
+
+        <div class="form-grupo">
+            <label>Início do período</label>
+            <input type="date" id="c-inicio">
+        </div>
+        <div class="form-grupo">
+            <label>Fim do período (opcional)</label>
+            <input type="date" id="c-fim">
+        </div>
+        <div class="form-grupo">
+            <label>Duração do fluxo (dias)</label>
+            <input type="number" id="c-duracao" min="1" max="10" placeholder="5">
+        </div>
+        <div class="form-grupo">
+            <label>Intensidade</label>
+            <select id="c-intensidade">
+                <option value="">— selecionar —</option>
+                <option value="Leve">Leve</option>
+                <option value="Moderado">Moderado</option>
+                <option value="Intenso">Intenso</option>
+            </select>
+        </div>
+        <div class="form-grupo">
+            <label>Notas</label>
+            <textarea id="c-notas" placeholder="Sintomas, cólicas, humor..."></textarea>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-secundario" style="flex:1;" onclick="fecharModal()">Cancelar</button>
+            <button class="btn btn-primario" style="flex:2;" onclick="guardarCiclo()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+
+async function verificarAuth() {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) window.location.href = 'login.html';
+}
+verificarAuth();
+
+const FASES = [
+    { nome: 'Menstrual',  emoji: '🔴', dias: [1, 5],   cor: '#EF4444', bg: '#991B1B',
+      desc: 'Período menstrual. Energia mais baixa é normal. Prioriza descanso e mobilidade suave.', treino: '🟢 Mobilidade + Pélvico' },
+    { nome: 'Folicular',  emoji: '🌱', dias: [6, 13],  cor: '#22C55E', bg: '#166534',
+      desc: 'Estrogénio a subir. Energia crescente. Boa fase para aumentar intensidade e novos desafios.', treino: '🔴 Treino Completo ou 🔵 Força Curta' },
+    { nome: 'Ovulação',   emoji: '✨', dias: [14, 16], cor: '#EAB308', bg: '#854D0E',
+      desc: 'Pico de estrogénio e testosterona. Máximo de energia e força. Vai ao limite!', treino: '🔴 Treino Completo intenso' },
+    { nome: 'Lútea',      emoji: '🌙', dias: [17, 28], cor: '#A855F7', bg: '#581C87',
+      desc: 'Progesterona sobe. Energia variável, possível PMS na fase final. Treinos moderados.', treino: '🔵 Força Curta ou 🟡 Cardio+Core' }
+];
+
+function calcularFase(diasCiclo) {
+    for (const f of FASES) {
+        if (diasCiclo >= f.dias[0] && diasCiclo <= f.dias[1]) return f;
+    }
+    return FASES[3];
+}
+
+function hoje() { return new Date().toISOString().split('T')[0]; }
+
+function mostrarToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('c-inicio').value = hoje();
+    await carregarCiclos();
+});
+
+async function carregarCiclos() {
+    const { data } = await db
+        .from('ciclo_menstrual')
+        .select('*')
+        .order('inicio', { ascending: false })
+        .limit(12);
+
+    renderFaseAtual(data);
+    renderHistorico(data);
+}
+
+function renderFaseAtual(ciclos) {
+    const el = document.getElementById('fase-atual-card');
+    if (!ciclos || ciclos.length === 0) {
+        el.innerHTML = `
+            <div class="card" style="text-align:center; padding:24px;">
+                <div style="font-size:2rem; margin-bottom:8px;">🌙</div>
+                <div style="font-weight:600; color:var(--azul-escuro);">Sem registos de ciclo</div>
+                <div style="font-size:0.85rem; color:var(--cinza-meio); margin-top:6px;">Adiciona o início do teu período para ver a fase atual.</div>
+            </div>`;
+        return;
+    }
+
+    const ultimo = ciclos[0];
+    const inicio = new Date(ultimo.inicio + 'T00:00:00');
+    const agora = new Date();
+    const diasCiclo = Math.floor((agora - inicio) / (1000*60*60*24)) + 1;
+    const fase = calcularFase(diasCiclo);
+
+    // Barra visual do ciclo
+    const segmentos = FASES.map(f => {
+        const largura = ((f.dias[1] - f.dias[0] + 1) / 28) * 100;
+        const ativo = fase.nome === f.nome;
+        return `<div class="ciclo-barra-seg ${ativo ? 'atual' : ''}" 
+            style="width:${largura}%; background:${f.cor}; opacity:${ativo ? '1' : '0.5'};"
+            title="${f.nome} (dias ${f.dias[0]}–${f.dias[1]})"></div>`;
+    }).join('');
+
+    // Marcador do dia atual
+    const posAtual = Math.min(100, ((diasCiclo - 1) / 28) * 100);
+
+    el.innerHTML = `
+        <div class="fase-card" style="background: linear-gradient(135deg, ${fase.cor}, ${fase.bg});">
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                <span style="font-size:2.5rem;">${fase.emoji}</span>
+                <div>
+                    <h3>${fase.nome}</h3>
+                    <div class="fase-dia">Dia ${diasCiclo} do ciclo</div>
+                </div>
+                <div style="margin-left:auto; text-align:right;">
+                    <div style="font-size:0.72rem; opacity:0.7;">Treino sugerido</div>
+                    <div style="font-size:0.78rem; font-weight:600; margin-top:2px;">${fase.treino}</div>
+                </div>
+            </div>
+
+            <div class="ciclo-barra">${segmentos}</div>
+            <div class="ciclo-marcador">
+                <span>Dia 1</span>
+                <span>Dia 7</span>
+                <span>Dia 14</span>
+                <span>Dia 21</span>
+                <span>Dia 28</span>
+            </div>
+
+            <div class="fase-desc">${fase.desc}</div>
+
+            <div class="proxima-info">
+                ${renderProximasFasesInline(diasCiclo)}
+            </div>
+        </div>`;
+
+    // Próximas fases
+    const proxCard = document.getElementById('proximas-fases-card');
+    const proxEl = document.getElementById('proximas-fases');
+    proxCard.style.display = 'block';
+    proxEl.innerHTML = renderProximasFases(diasCiclo, inicio);
+}
+
+function renderProximasFasesInline(diaAtual) {
+    const proxima = FASES.find(f => f.dias[0] > diaAtual);
+    if (!proxima) return '<span style="color:rgba(255,255,255,0.8)">Fim do ciclo a aproximar-se.</span>';
+    const diasRestantes = proxima.dias[0] - diaAtual;
+    return `<span style="color:rgba(255,255,255,0.85)">Próxima fase: <strong>${proxima.emoji} ${proxima.nome}</strong> em ${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}</span>`;
+}
+
+function renderProximasFases(diaAtual, inicioCiclo) {
+    return FASES.filter(f => f.dias[0] > diaAtual).map(f => {
+        const dataInicio = new Date(inicioCiclo.getTime() + (f.dias[0] - 1) * 24*60*60*1000);
+        const dataFormatada = dataInicio.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+        const diasRestantes = f.dias[0] - diaAtual;
+
+        return `
+            <div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--cinza-claro);">
+                <div style="width:36px; height:36px; border-radius:50%; background:${f.cor}20; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0;">
+                    ${f.emoji}
+                </div>
+                <div style="flex:1;">
+                    <div style="font-weight:600; font-size:0.9rem;">${f.nome}</div>
+                    <div style="font-size:0.75rem; color:var(--cinza-meio);">dias ${f.dias[0]}–${f.dias[1]} · ${dataFormatada}</div>
+                </div>
+                <div style="text-align:right; font-size:0.8rem; color:var(--cinza-meio);">
+                    em ${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}
+                </div>
+            </div>`;
+    }).join('') || '<div style="color:var(--cinza-meio); font-size:0.9rem;">Fim do ciclo atual.</div>';
+}
+
+function renderHistorico(ciclos) {
+    const el = document.getElementById('historico-ciclos');
+    if (!ciclos || ciclos.length === 0) {
+        el.innerHTML = '<div style="color:var(--cinza-meio);">Sem registos ainda.</div>';
+        return;
+    }
+
+    el.innerHTML = ciclos.map((c, i) => {
+        const inicio = new Date(c.inicio + 'T00:00:00');
+        const dataStr = inicio.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        // Calcular duração do ciclo (distância até ao próximo)
+        let duracaoCiclo = '';
+        if (i < ciclos.length - 1) {
+            const anterior = new Date(ciclos[i + 1].inicio + 'T00:00:00');
+            const dias = Math.round((inicio - anterior) / (1000*60*60*24));
+            if (dias > 0 && dias < 60) duracaoCiclo = `${dias} dias`;
+        }
+
+        const duracaoFluxo = c.fim
+            ? Math.round((new Date(c.fim) - new Date(c.inicio)) / (1000*60*60*24)) + ' dias de fluxo'
+            : '';
+
+        return `
+            <div class="historico-ciclo-item">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+                    <div style="font-weight:600; font-size:0.9rem;">🔴 ${dataStr}</div>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        ${duracaoCiclo ? `<span class="duracao-badge">${duracaoCiclo}</span>` : ''}
+                    </div>
+                </div>
+                <div style="font-size:0.78rem; color:var(--cinza-meio);">
+                    ${duracaoFluxo}
+                    ${c.notas ? ' · ' + c.notas : ''}
+                </div>
+            </div>`;
+    }).join('');
+}
+
+// ---- MODAL ----
+function abrirModal() {
+    document.getElementById('modal-ciclo').classList.add('open');
+}
+
+function fecharModal() {
+    document.getElementById('modal-ciclo').classList.remove('open');
+}
+
+document.getElementById('modal-ciclo').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-ciclo')) fecharModal();
+});
+
+async function guardarCiclo() {
+    const inicio = document.getElementById('c-inicio').value;
+    if (!inicio) { mostrarToast('Escolhe a data de início'); return; }
+
+    const notas = [
+        document.getElementById('c-intensidade').value,
+        document.getElementById('c-notas').value.trim()
+    ].filter(Boolean).join(' · ');
+
+    const payload = {
+        inicio,
+        fim: document.getElementById('c-fim').value || null,
+        notas: notas || null
+    };
+
+    const { error } = await db.from('ciclo_menstrual').insert(payload);
+
+    if (error) { mostrarToast('Erro ao guardar 😕'); return; }
+    mostrarToast('Ciclo registado ✓');
+    fecharModal();
+    await carregarCiclos();
+}
+
+</script>
+</body>
+</html>
