@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Métricas Corporais</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+    <style>
+        .tabs {
+            display: flex;
+            background: var(--branco);
+            border-radius: var(--radius);
+            padding: 4px;
+            margin-bottom: 16px;
+            box-shadow: var(--sombra);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 9px 4px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: none;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--cinza-meio);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .tab-btn.active { background: var(--verde); color: white; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .metrica-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .metrica-box {
+            background: var(--fundo);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            text-align: center;
+        }
+
+        .metrica-box-valor {
+            font-family: 'DM Mono', monospace;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--azul-escuro);
+            line-height: 1;
+        }
+
+        .metrica-box-unidade {
+            font-size: 0.7rem;
+            color: var(--cinza-meio);
+            margin-left: 2px;
+        }
+
+        .metrica-box-label {
+            font-size: 0.72rem;
+            color: var(--cinza-meio);
+            margin-top: 4px;
+        }
+
+        .metrica-box.destaque {
+            background: var(--verde-claro);
+            grid-column: span 2;
+        }
+
+        .metrica-box.destaque .metrica-box-valor { color: var(--verde); font-size: 2rem; }
+
+        .upload-zone {
+            border: 2px dashed var(--cinza-borda);
+            border-radius: var(--radius);
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--branco);
+        }
+        .upload-zone:hover { border-color: var(--verde); background: var(--verde-claro); }
+        .upload-zone-icon { font-size: 2rem; margin-bottom: 8px; }
+        .upload-zone p { color: var(--cinza-meio); font-size: 0.85rem; }
+        .upload-zone strong { color: var(--verde); }
+
+        .evolucao-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--cinza-claro);
+        }
+        .evolucao-item:last-child { border-bottom: none; }
+
+        .evolucao-data { font-size: 0.8rem; color: var(--cinza-meio); }
+        .evolucao-valor {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--azul-escuro);
+        }
+        .evolucao-diff {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 99px;
+        }
+        .diff-pos { background: #FEE2E2; color: #DC2626; }
+        .diff-neg { background: var(--verde-claro); color: var(--verde); }
+        .diff-zero { background: var(--cinza-claro); color: var(--cinza-meio); }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <a href="index.html" style="color:var(--cinza-meio); display:flex;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <h1>Corpo</h1>
+    </div>
+</header>
+
+<div class="page active">
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="mudarTab('resumo')">📊 Resumo</button>
+        <button class="tab-btn" onclick="mudarTab('importar')">📥 Importar</button>
+        <button class="tab-btn" onclick="mudarTab('evolucao')">📈 Evolução</button>
+    </div>
+
+    <!-- TAB RESUMO -->
+    <div class="tab-panel active" id="tab-resumo">
+        <div id="resumo-content">
+            <div class="card" style="text-align:center; padding:32px;">
+                <div style="font-size:2rem; margin-bottom:8px;">⚖️</div>
+                <div style="font-weight:600; color:var(--azul-escuro);">Sem dados ainda</div>
+                <div style="font-size:0.85rem; color:var(--cinza-meio); margin-top:6px;">Importa o teu primeiro registo da balança.</div>
+                <button class="btn btn-primario" style="margin-top:16px;" onclick="mudarTab('importar')">Importar agora</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB IMPORTAR -->
+    <div class="tab-panel" id="tab-importar">
+        <div class="card">
+            <div class="card-titulo">Importar da balança</div>
+            <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:14px;">
+                Pede ao Claude para gerar o ficheiro de métricas com os valores da tua balança Prozis Sensit, e carrega aqui o <code>.md</code> gerado.
+            </p>
+
+            <div class="upload-zone" onclick="document.getElementById('file-metricas').click()">
+                <div class="upload-zone-icon">📄</div>
+                <p><strong>Clica para carregar o ficheiro .md</strong><br>gerado pelo Claude com os teus dados</p>
+            </div>
+            <input type="file" id="file-metricas" accept=".md,.txt" style="display:none" onchange="lerFicheiroMetricas(this)">
+        </div>
+
+        <div class="card" id="preview-importacao" style="display:none;">
+            <div class="card-titulo">Pré-visualização</div>
+            <div id="preview-conteudo"></div>
+            <div style="display:flex; gap:8px; margin-top:14px;">
+                <button class="btn btn-secundario" style="flex:1;" onclick="cancelarImportacao()">Cancelar</button>
+                <button class="btn btn-primario" style="flex:2;" onclick="confirmarImportacao()">✓ Importar</button>
+            </div>
+        </div>
+
+        <div class="card" style="background:var(--fundo); border:1.5px solid var(--cinza-borda);">
+            <div class="card-titulo">Como gerar o ficheiro</div>
+            <p style="font-size:0.82rem; color:var(--cinza-meio); line-height:1.6;">
+                Envia esta mensagem ao Claude com os teus valores:<br><br>
+                <span style="background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; display:block; font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--cinza-texto);">
+                    Gera o ficheiro de métricas corporais com estes valores da minha balança Prozis Sensit:<br><br>
+                    Peso: [valor] kg<br>
+                    IMC: [valor]<br>
+                    Gordura corporal: [valor]%<br>
+                    Gordura visceral: [valor]<br>
+                    Gordura subcutânea: [valor]%<br>
+                    Massa muscular: [valor] kg<br>
+                    Músculo esquelético: [valor]%<br>
+                    Água corporal: [valor]%<br>
+                    Idade metabólica: [valor]<br>
+                    Massa óssea: [valor] kg<br>
+                    TMB: [valor] kcal/dia<br>
+                    Proteínas: [valor]%
+                </span>
+            </p>
+        </div>
+    </div>
+
+    <!-- TAB EVOLUÇÃO -->
+    <div class="tab-panel" id="tab-evolucao">
+        <div class="card">
+            <div class="card-titulo">Evolução do peso</div>
+            <canvas id="grafico-peso" height="160"></canvas>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Histórico completo</div>
+            <div style="margin-bottom:10px;">
+                <select id="metrica-selector" onchange="renderHistorico()" style="width:100%; padding:8px 10px; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); font-family:'DM Sans',sans-serif; font-size:0.9rem; outline:none;">
+                    <option value="peso_kg">⚖️ Peso (kg)</option>
+                    <option value="gordura_corporal">🔥 Gordura corporal (%)</option>
+                    <option value="massa_muscular">💪 Massa muscular (kg)</option>
+                    <option value="gordura_visceral">⚠️ Gordura visceral</option>
+                    <option value="agua_corporal">💧 Água corporal (%)</option>
+                    <option value="imc">📐 IMC</option>
+                    <option value="idade_metabolica">⚡ Idade metabólica</option>
+                    <option value="massa_ossea">🦴 Massa óssea (kg)</option>
+                    <option value="tmb">🔥 TMB (kcal)</option>
+                </select>
+            </div>
+            <div id="historico-lista">A carregar...</div>
+        </div>
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="js/config.js"></script>
+<script>
+
+async function verificarAuth() {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) window.location.href = 'login.html';
+}
+verificarAuth();
+
+let dadosMetricas = [];
+let dadosParaImportar = null;
+let graficoPeso = null;
+
+function mostrarToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await carregarMetricas();
+});
+
+function mudarTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        const tabs = ['resumo', 'importar', 'evolucao'];
+        b.classList.toggle('active', tabs[i] === tab);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (tab === 'evolucao') renderGraficoPeso();
+}
+
+// ---- CARREGAR ----
+async function carregarMetricas() {
+    const { data } = await db
+        .from('metricas_corporais')
+        .select('*')
+        .order('data', { ascending: false })
+        .limit(30);
+
+    dadosMetricas = data || [];
+    renderResumo();
+    renderHistorico();
+}
+
+// ---- RESUMO ----
+function renderResumo() {
+    const el = document.getElementById('resumo-content');
+    if (dadosMetricas.length === 0) return;
+
+    const u = dadosMetricas[0];
+    const ant = dadosMetricas[1];
+    const data = new Date(u.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    function diff(campo, inverso = false) {
+        if (!ant || !u[campo] || !ant[campo]) return '';
+        const d = (u[campo] - ant[campo]).toFixed(1);
+        if (d == 0) return `<span class="evolucao-diff diff-zero">= igual</span>`;
+        const positivo = parseFloat(d) > 0;
+        const bom = inverso ? !positivo : positivo;
+        const cls = bom ? 'diff-neg' : 'diff-pos';
+        return `<span class="evolucao-diff ${cls}">${positivo ? '+' : ''}${d}</span>`;
+    }
+
+    el.innerHTML = `
+        <div class="card">
+            <div class="card-titulo">Último registo — ${data}</div>
+
+            <div class="metrica-grid">
+                <div class="metrica-box destaque">
+                    <div class="metrica-box-valor">${u.peso_kg ?? '—'}<span class="metrica-box-unidade">kg</span></div>
+                    <div class="metrica-box-label">⚖️ Peso ${diff('peso_kg', false)}</div>
+                </div>
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${u.gordura_corporal ?? '—'}<span class="metrica-box-unidade">%</span></div>
+                    <div class="metrica-box-label">🔥 Gordura corporal ${diff('gordura_corporal', false)}</div>
+                </div>
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${u.massa_muscular ?? '—'}<span class="metrica-box-unidade">kg</span></div>
+                    <div class="metrica-box-label">💪 Massa muscular ${diff('massa_muscular', true)}</div>
+                </div>
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${u.gordura_visceral ?? '—'}</div>
+                    <div class="metrica-box-label">⚠️ Gordura visceral ${diff('gordura_visceral', false)}</div>
+                </div>
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${u.agua_corporal ?? '—'}<span class="metrica-box-unidade">%</span></div>
+                    <div class="metrica-box-label">💧 Água corporal ${diff('agua_corporal', true)}</div>
+                </div>
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${u.imc ?? '—'}</div>
+                    <div class="metrica-box-label">📐 IMC ${diff('imc', false)}</div>
+                </div>
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${u.idade_metabolica ?? '—'}<span class="metrica-box-unidade">anos</span></div>
+                    <div class="metrica-box-label">⚡ Idade metabólica ${diff('idade_metabolica', false)}</div>
+                </div>
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${u.massa_ossea ?? '—'}<span class="metrica-box-unidade">kg</span></div>
+                    <div class="metrica-box-label">🦴 Massa óssea ${diff('massa_ossea', true)}</div>
+                </div>
+                ${u.tmb ? `
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${u.tmb}<span class="metrica-box-unidade">kcal</span></div>
+                    <div class="metrica-box-label">🔥 TMB</div>
+                </div>` : ''}
+                ${u.proteinas ? `
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${u.proteinas}<span class="metrica-box-unidade">%</span></div>
+                    <div class="metrica-box-label">🥩 Proteínas</div>
+                </div>` : ''}
+            </div>
+        </div>`;
+}
+
+// ---- IMPORTAR MD ----
+function lerFicheiroMetricas(input) {
+    if (!input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => parsearMD(e.target.result);
+    reader.readAsText(input.files[0]);
+}
+
+function parsearMD(texto) {
+    // Extrair bloco ---METRICAS--- ... ---FIM---
+    const match = texto.match(/---METRICAS---([\s\S]*?)---FIM---/);
+    if (!match) {
+        mostrarToast('Ficheiro inválido — bloco de métricas não encontrado');
+        return;
+    }
+
+    const linhas = match[1].trim().split('\n');
+    const dados = {};
+    for (const linha of linhas) {
+        const [chave, valor] = linha.split(':').map(s => s.trim());
+        if (chave && valor) dados[chave] = valor;
+    }
+
+    // Mapear para campos da BD
+    dadosParaImportar = {
+        data: dados.data || new Date().toISOString().split('T')[0],
+        peso_kg: parseFloat(dados.peso_kg) || null,
+        imc: parseFloat(dados.imc) || null,
+        gordura_corporal: parseFloat(dados.gordura_corporal) || null,
+        gordura_visceral: parseInt(dados.gordura_visceral) || null,
+        gordura_subcutanea: parseFloat(dados.gordura_subcutanea) || null,
+        massa_muscular: parseFloat(dados.massa_muscular) || null,
+        musculo_esqueletico: parseFloat(dados.musculo_esqueletico) || null,
+        agua_corporal: parseFloat(dados.agua_corporal) || null,
+        idade_metabolica: parseInt(dados.idade_metabolica) || null,
+        massa_ossea: parseFloat(dados.massa_ossea) || null,
+        tmb: parseInt(dados.tmb) || null,
+        proteinas: parseFloat(dados.proteinas) || null
+    };
+
+    mostrarPreview();
+}
+
+function mostrarPreview() {
+    const d = dadosParaImportar;
+    const data = new Date(d.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const campos = [
+        ['⚖️ Peso', d.peso_kg, 'kg'],
+        ['📐 IMC', d.imc, ''],
+        ['🔥 Gordura corporal', d.gordura_corporal, '%'],
+        ['⚠️ Gordura visceral', d.gordura_visceral, ''],
+        ['💪 Massa muscular', d.massa_muscular, 'kg'],
+        ['💧 Água corporal', d.agua_corporal, '%'],
+        ['⚡ Idade metabólica', d.idade_metabolica, 'anos'],
+        ['🦴 Massa óssea', d.massa_ossea, 'kg'],
+        ['🔥 TMB', d.tmb, 'kcal'],
+        ['🥩 Proteínas', d.proteinas, '%'],
+    ].filter(([,v]) => v !== null);
+
+    document.getElementById('preview-conteudo').innerHTML = `
+        <div style="font-weight:600; margin-bottom:10px; color:var(--azul-escuro);">${data}</div>
+        ${campos.map(([label, val, un]) => `
+            <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--cinza-claro); font-size:0.85rem;">
+                <span>${label}</span>
+                <span style="font-family:'DM Mono',monospace; font-weight:600;">${val}${un ? ' ' + un : ''}</span>
+            </div>`).join('')}`;
+
+    document.getElementById('preview-importacao').style.display = 'block';
+}
+
+function cancelarImportacao() {
+    dadosParaImportar = null;
+    document.getElementById('preview-importacao').style.display = 'none';
+    document.getElementById('file-metricas').value = '';
+}
+
+async function confirmarImportacao() {
+    if (!dadosParaImportar) return;
+
+    const { error } = await db
+        .from('metricas_corporais')
+        .upsert(dadosParaImportar, { onConflict: 'data' });
+
+    if (error) {
+        mostrarToast('Erro ao importar 😕');
+        console.error(error);
+        return;
+    }
+
+    mostrarToast('Métricas importadas ✓');
+    cancelarImportacao();
+    await carregarMetricas();
+    mudarTab('resumo');
+}
+
+// ---- GRÁFICO PESO ----
+function renderGraficoPeso() {
+    if (dadosMetricas.length === 0) return;
+    const ctx = document.getElementById('grafico-peso');
+    if (!ctx) return;
+    if (graficoPeso) graficoPeso.destroy();
+
+    const labels = [...dadosMetricas].reverse().map(d =>
+        new Date(d.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' })
+    );
+    const pesos = [...dadosMetricas].reverse().map(d => d.peso_kg);
+
+    graficoPeso = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Peso (kg)',
+                data: pesos,
+                borderColor: '#2A9D8F',
+                backgroundColor: 'rgba(42,157,143,0.08)',
+                pointBackgroundColor: '#2A9D8F',
+                pointRadius: 4,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: false, grid: { color: '#F3F4F6' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+// ---- HISTÓRICO ----
+function renderHistorico() {
+    const el = document.getElementById('historico-lista');
+    if (!el || dadosMetricas.length === 0) {
+        if (el) el.innerHTML = '<div style="color:var(--cinza-meio);">Sem dados ainda.</div>';
+        return;
+    }
+
+    const campo = document.getElementById('metrica-selector')?.value || 'peso_kg';
+    const unidades = {
+        peso_kg: 'kg', gordura_corporal: '%', massa_muscular: 'kg',
+        gordura_visceral: '', agua_corporal: '%', imc: '',
+        idade_metabolica: 'anos', massa_ossea: 'kg', tmb: 'kcal'
+    };
+    const un = unidades[campo] || '';
+
+    // Para o peso, inverter lógica (menos é melhor)
+    const menosEMelhor = ['peso_kg', 'gordura_corporal', 'gordura_visceral', 'imc', 'idade_metabolica'];
+
+    el.innerHTML = dadosMetricas.map((d, i) => {
+        const data = new Date(d.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
+        const val = d[campo];
+        const prox = dadosMetricas[i + 1];
+
+        let diffEl = '';
+        if (prox && prox[campo] && val) {
+            const diff = (val - prox[campo]);
+            const diffStr = (diff > 0 ? '+' : '') + diff.toFixed(1);
+            const bom = menosEMelhor.includes(campo) ? diff < 0 : diff > 0;
+            const cls = diff === 0 ? 'diff-zero' : bom ? 'diff-neg' : 'diff-pos';
+            diffEl = `<span class="evolucao-diff ${cls}">${diffStr}</span>`;
+        }
+
+        return `
+            <div class="evolucao-item">
+                <div class="evolucao-data">${data}</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="evolucao-valor">${val ?? '—'}${val ? ' ' + un : ''}</span>
+                    ${diffEl}
+                </div>
+            </div>`;
+    }).join('');
+}
+
+</script>
+</body>
+</html>

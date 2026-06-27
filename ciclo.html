@@ -455,7 +455,7 @@ function renderCalendario() {
         new Date(ano, mes, 1).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
 
     const grid = document.getElementById('cal-grid');
-    const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const dias = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
     // Headers
     let html = dias.map(d => `<div class="cal-header-dia">${d}</div>`).join('');
