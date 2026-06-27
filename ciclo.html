@@ -8,70 +8,191 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
     <style>
-        .fase-card {
-            border-radius: var(--radius);
-            padding: 20px;
+        .cal-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-bottom: 12px;
+        }
+        .cal-nav button {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            cursor: pointer;
+            color: var(--verde);
+            padding: 4px 10px;
+        }
+        .cal-mes-label {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--azul-escuro);
+            text-transform: capitalize;
+        }
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 3px;
+        }
+        .cal-header-dia {
+            text-align: center;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--cinza-meio);
+            text-transform: uppercase;
+            padding: 4px 0;
+        }
+        .cal-dia {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.15s;
+            color: var(--cinza-texto);
+        }
+        .cal-dia:hover { background: var(--cinza-claro); }
+        .cal-dia.vazio { cursor: default; }
+        .cal-dia.hoje {
+            border: 2px solid var(--verde);
+            font-weight: 700;
+            color: var(--verde);
+        }
+        .cal-dia.periodo {
+            background: #FCA5A5;
+            color: #991B1B;
+            font-weight: 700;
+        }
+        .cal-dia.periodo.inicio {
+            background: #EF4444;
             color: white;
         }
+        .cal-dia.periodo.fim {
+            background: #F87171;
+            color: white;
+        }
+        .cal-dia.fase-folicular { background: #BBF7D0; color: #166534; }
+        .cal-dia.fase-ovulacao  { background: #FEF08A; color: #854D0E; }
+        .cal-dia.fase-lutea     { background: #E9D5FF; color: #581C87; }
+        .cal-dia.previsao {
+            border: 2px dashed #FCA5A5;
+            color: #EF4444;
+        }
 
-        .fase-card h3 { font-size: 1.1rem; font-weight: 700; }
-        .fase-card .fase-dia { font-size: 0.85rem; opacity: 0.85; margin-top: 2px; }
-        .fase-card .fase-desc { font-size: 0.82rem; opacity: 0.9; margin-top: 10px; line-height: 1.5; }
-
-        .ciclo-barra {
+        /* LINHA DO TEMPO */
+        .timeline-wrap {
+            position: relative;
+            padding: 8px 0;
+        }
+        .timeline-barra {
             display: flex;
+            height: 28px;
             border-radius: 99px;
             overflow: hidden;
-            height: 14px;
-            margin: 16px 0 8px;
+            margin-bottom: 6px;
         }
-
-        .ciclo-barra-seg {
+        .timeline-seg {
             height: 100%;
-            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: white;
             transition: opacity 0.2s;
         }
-
-        .ciclo-barra-seg.atual { outline: 3px solid white; outline-offset: -1px; }
-
-        .ciclo-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.65rem;
-            color: rgba(255,255,255,0.7);
-            margin-bottom: 4px;
-        }
-
-        .ciclo-marcador {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.7rem;
-            color: rgba(255,255,255,0.6);
-        }
-
-        .historico-ciclo-item {
-            padding: 12px 0;
-            border-bottom: 1px solid var(--cinza-claro);
-        }
-
-        .historico-ciclo-item:last-child { border-bottom: none; }
-
-        .duracao-badge {
-            background: var(--verde-claro);
-            color: var(--verde);
-            font-size: 0.72rem;
-            font-weight: 600;
-            padding: 2px 8px;
+        .timeline-marcador {
+            position: absolute;
+            top: 0;
+            width: 3px;
+            height: 44px;
+            background: var(--azul-escuro);
             border-radius: 99px;
+            transform: translateX(-50%);
+        }
+        .timeline-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.62rem;
+            color: var(--cinza-meio);
+            margin-top: 4px;
+        }
+        .fase-legenda {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .fase-leg-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.72rem;
+            color: var(--cinza-meio);
+        }
+        .fase-leg-dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
         }
 
-        .proxima-info {
-            background: var(--fundo);
+        /* PREVISÃO */
+        .previsao-card {
+            background: linear-gradient(135deg, #FEF2F2, #FFF);
+            border: 1.5px solid #FECACA;
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+        .previsao-titulo {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #EF4444;
+            margin-bottom: 8px;
+        }
+        .previsao-data {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--azul-escuro);
+        }
+        .previsao-dias {
+            font-size: 0.85rem;
+            color: var(--cinza-meio);
+            margin-top: 2px;
+        }
+
+        /* REGISTO RÁPIDO */
+        .registo-rapido {
+            display: flex;
+            gap: 8px;
+        }
+        .registo-rapido button {
+            flex: 1;
+            padding: 12px 8px;
             border-radius: var(--radius-sm);
-            padding: 12px;
-            margin-top: 10px;
+            border: 1.5px solid var(--cinza-borda);
+            background: var(--branco);
+            font-family: 'DM Sans', sans-serif;
             font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: var(--cinza-texto);
+        }
+        .registo-rapido button.ativo-inicio {
+            background: #EF4444;
+            border-color: #EF4444;
+            color: white;
+        }
+        .registo-rapido button.ativo-fim {
+            background: var(--verde);
+            border-color: var(--verde);
+            color: white;
         }
     </style>
 </head>
@@ -86,24 +207,59 @@
         </a>
         <h1>Ciclo Menstrual</h1>
     </div>
-    <button class="btn btn-secundario" style="width:auto; padding:8px 14px; font-size:0.85rem;" onclick="abrirModal()">
-        + Registo
-    </button>
 </header>
 
 <div class="page active">
 
+    <!-- PREVISÃO PRÓXIMO PERÍODO -->
+    <div id="previsao-wrap"></div>
+
     <!-- FASE ATUAL -->
-    <div id="fase-atual-card">
-        <div style="background:var(--cinza-claro); border-radius:var(--radius); padding:20px; margin-bottom:12px; text-align:center; color:var(--cinza-meio);">
-            A calcular fase atual...
+    <div id="fase-atual-wrap" class="card" style="margin-bottom:12px;"></div>
+
+    <!-- LINHA DO TEMPO -->
+    <div class="card" id="timeline-wrap-card" style="display:none;">
+        <div class="card-titulo">Posição no ciclo</div>
+        <div class="timeline-wrap">
+            <div class="timeline-barra" id="timeline-barra"></div>
+            <div class="timeline-marcador" id="timeline-marcador"></div>
+        </div>
+        <div class="timeline-labels">
+            <span>Dia 1</span><span>Dia 7</span><span>Dia 14</span><span>Dia 21</span><span>Dia 28+</span>
+        </div>
+        <div class="fase-legenda" id="fase-legenda"></div>
+    </div>
+
+    <!-- CALENDÁRIO -->
+    <div class="card">
+        <div class="cal-nav">
+            <button onclick="mudarMes(-1)">‹</button>
+            <span class="cal-mes-label" id="cal-titulo"></span>
+            <button onclick="mudarMes(1)">›</button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; font-size:0.72rem; color:var(--cinza-meio);">
+            <span>🔴 Período</span>
+            <span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;border:2px dashed #FCA5A5;border-radius:50%;"></span> Previsão</span>
+            <span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#BBF7D0;border-radius:50%;"></span> Folicular</span>
+            <span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#FEF08A;border-radius:50%;"></span> Ovulação</span>
+            <span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#E9D5FF;border-radius:50%;"></span> Lútea</span>
         </div>
     </div>
 
-    <!-- PRÓXIMAS FASES -->
-    <div class="card" id="proximas-fases-card" style="display:none;">
-        <div class="card-titulo">Próximas fases</div>
-        <div id="proximas-fases"></div>
+    <!-- REGISTO RÁPIDO -->
+    <div class="card">
+        <div class="card-titulo">Registar período</div>
+        <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:12px;">Clica no calendário para selecionar o dia, ou usa os botões abaixo.</p>
+        <div class="form-grupo">
+            <label>Data selecionada</label>
+            <input type="date" id="data-selecionada">
+        </div>
+        <div class="registo-rapido" style="margin-top:4px;">
+            <button id="btn-inicio" onclick="registarInicio()">🔴 Marcar início</button>
+            <button id="btn-fim" onclick="registarFim()">✅ Marcar fim</button>
+        </div>
+        <div id="registo-estado" style="margin-top:10px; font-size:0.82rem; color:var(--cinza-meio);"></div>
     </div>
 
     <!-- HISTÓRICO -->
@@ -112,44 +268,6 @@
         <div id="historico-ciclos" style="color:var(--cinza-meio); font-size:0.9rem;">A carregar...</div>
     </div>
 
-</div>
-
-<!-- MODAL REGISTO -->
-<div class="modal-overlay" id="modal-ciclo">
-    <div class="modal">
-        <div class="modal-titulo">Registo de ciclo</div>
-
-        <div class="form-grupo">
-            <label>Início do período</label>
-            <input type="date" id="c-inicio">
-        </div>
-        <div class="form-grupo">
-            <label>Fim do período (opcional)</label>
-            <input type="date" id="c-fim">
-        </div>
-        <div class="form-grupo">
-            <label>Duração do fluxo (dias)</label>
-            <input type="number" id="c-duracao" min="1" max="10" placeholder="5">
-        </div>
-        <div class="form-grupo">
-            <label>Intensidade</label>
-            <select id="c-intensidade">
-                <option value="">— selecionar —</option>
-                <option value="Leve">Leve</option>
-                <option value="Moderado">Moderado</option>
-                <option value="Intenso">Intenso</option>
-            </select>
-        </div>
-        <div class="form-grupo">
-            <label>Notas</label>
-            <textarea id="c-notas" placeholder="Sintomas, cólicas, humor..."></textarea>
-        </div>
-
-        <div style="display:flex; gap:10px;">
-            <button class="btn btn-secundario" style="flex:1;" onclick="fecharModal()">Cancelar</button>
-            <button class="btn btn-primario" style="flex:2;" onclick="guardarCiclo()">Guardar</button>
-        </div>
-    </div>
 </div>
 
 <div id="toast"></div>
@@ -164,16 +282,22 @@ async function verificarAuth() {
 }
 verificarAuth();
 
+// ---- ESTADO ----
 const FASES = [
-    { nome: 'Menstrual',  emoji: '🔴', dias: [1, 5],   cor: '#EF4444', bg: '#991B1B',
-      desc: 'Período menstrual. Energia mais baixa é normal. Prioriza descanso e mobilidade suave.', treino: '🟢 Mobilidade + Pélvico' },
-    { nome: 'Folicular',  emoji: '🌱', dias: [6, 13],  cor: '#22C55E', bg: '#166534',
-      desc: 'Estrogénio a subir. Energia crescente. Boa fase para aumentar intensidade e novos desafios.', treino: '🔴 Treino Completo ou 🔵 Força Curta' },
-    { nome: 'Ovulação',   emoji: '✨', dias: [14, 16], cor: '#EAB308', bg: '#854D0E',
-      desc: 'Pico de estrogénio e testosterona. Máximo de energia e força. Vai ao limite!', treino: '🔴 Treino Completo intenso' },
-    { nome: 'Lútea',      emoji: '🌙', dias: [17, 28], cor: '#A855F7', bg: '#581C87',
-      desc: 'Progesterona sobe. Energia variável, possível PMS na fase final. Treinos moderados.', treino: '🔵 Força Curta ou 🟡 Cardio+Core' }
+    { nome: 'Menstrual', emoji: '🔴', dias: [1, 5],   cor: '#EF4444', classe: 'periodo',
+      desc: 'Período. Prioriza descanso e mobilidade suave.', treino: '🟢 Mobilidade' },
+    { nome: 'Folicular',  emoji: '🌱', dias: [6, 13],  cor: '#22C55E', classe: 'fase-folicular',
+      desc: 'Energia crescente. Boa fase para intensidade.', treino: '🔴 Treino Completo' },
+    { nome: 'Ovulação',   emoji: '✨', dias: [14, 16], cor: '#EAB308', classe: 'fase-ovulacao',
+      desc: 'Pico de energia e força. Vai ao limite!', treino: '🔴 Treino Completo intenso' },
+    { nome: 'Lútea',      emoji: '🌙', dias: [17, 28], cor: '#A855F7', classe: 'fase-lutea',
+      desc: 'Energia variável. Treinos moderados.', treino: '🔵 Força Curta' }
 ];
+
+let ciclos = [];
+let mesAtual = new Date();
+let dataSelecionada = new Date().toISOString().split('T')[0];
+let cicloAberto = null; // ciclo com início mas sem fim
 
 function calcularFase(diasCiclo) {
     for (const f of FASES) {
@@ -191,8 +315,10 @@ function mostrarToast(msg) {
     setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+// ---- INIT ----
 document.addEventListener('DOMContentLoaded', async () => {
-    document.getElementById('c-inicio').value = hoje();
+    document.getElementById('data-selecionada').value = hoje();
+    dataSelecionada = hoje();
     await carregarCiclos();
 });
 
@@ -201,111 +327,298 @@ async function carregarCiclos() {
         .from('ciclo_menstrual')
         .select('*')
         .order('inicio', { ascending: false })
-        .limit(12);
+        .limit(24);
 
-    renderFaseAtual(data);
-    renderHistorico(data);
+    ciclos = data || [];
+    cicloAberto = ciclos.find(c => !c.fim);
+
+    renderPrevisao();
+    renderFaseAtual();
+    renderTimeline();
+    renderCalendario();
+    renderHistorico();
+    atualizarBotoesRegisto();
 }
 
-function renderFaseAtual(ciclos) {
-    const el = document.getElementById('fase-atual-card');
-    if (!ciclos || ciclos.length === 0) {
+// ---- PREVISÃO ----
+function renderPrevisao() {
+    const el = document.getElementById('previsao-wrap');
+    if (ciclos.length === 0) { el.innerHTML = ''; return; }
+
+    // Calcular média de ciclos
+    let mediaCiclo = 28;
+    if (ciclos.length >= 2) {
+        const duracoes = [];
+        for (let i = 0; i < Math.min(ciclos.length - 1, 6); i++) {
+            const a = new Date(ciclos[i].inicio + 'T00:00:00');
+            const b = new Date(ciclos[i+1].inicio + 'T00:00:00');
+            const diff = Math.round((a - b) / (1000*60*60*24));
+            if (diff > 15 && diff < 50) duracoes.push(diff);
+        }
+        if (duracoes.length > 0) {
+            mediaCiclo = Math.round(duracoes.reduce((a,b) => a+b, 0) / duracoes.length);
+        }
+    }
+
+    const ultimoInicio = new Date(ciclos[0].inicio + 'T00:00:00');
+    const proximoInicio = new Date(ultimoInicio.getTime() + mediaCiclo * 24*60*60*1000);
+    const agora = new Date();
+    const diasAte = Math.round((proximoInicio - agora) / (1000*60*60*24));
+
+    if (diasAte < 0) { el.innerHTML = ''; return; }
+
+    const dataFormatada = proximoInicio.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' });
+
+    el.innerHTML = `
+        <div class="previsao-card">
+            <div class="previsao-titulo">🔮 Próximo período previsto</div>
+            <div class="previsao-data">🔴 ${dataFormatada}</div>
+            <div class="previsao-dias">em ${diasAte} dia${diasAte !== 1 ? 's' : ''} · ciclo médio de ${mediaCiclo} dias</div>
+        </div>`;
+}
+
+// ---- FASE ATUAL ----
+function renderFaseAtual() {
+    const el = document.getElementById('fase-atual-wrap');
+    if (ciclos.length === 0) {
         el.innerHTML = `
-            <div class="card" style="text-align:center; padding:24px;">
-                <div style="font-size:2rem; margin-bottom:8px;">🌙</div>
-                <div style="font-weight:600; color:var(--azul-escuro);">Sem registos de ciclo</div>
-                <div style="font-size:0.85rem; color:var(--cinza-meio); margin-top:6px;">Adiciona o início do teu período para ver a fase atual.</div>
+            <div style="text-align:center; padding:8px;">
+                <div style="font-size:1.5rem; margin-bottom:6px;">🌙</div>
+                <div style="font-weight:600; color:var(--azul-escuro);">Sem registos ainda</div>
+                <div style="font-size:0.82rem; color:var(--cinza-meio); margin-top:4px;">Marca o início do teu período abaixo.</div>
             </div>`;
         return;
     }
 
     const ultimo = ciclos[0];
     const inicio = new Date(ultimo.inicio + 'T00:00:00');
-    const agora = new Date();
-    const diasCiclo = Math.floor((agora - inicio) / (1000*60*60*24)) + 1;
-    const fase = calcularFase(diasCiclo);
-
-    // Barra visual do ciclo
-    const segmentos = FASES.map(f => {
-        const largura = ((f.dias[1] - f.dias[0] + 1) / 28) * 100;
-        const ativo = fase.nome === f.nome;
-        return `<div class="ciclo-barra-seg ${ativo ? 'atual' : ''}" 
-            style="width:${largura}%; background:${f.cor}; opacity:${ativo ? '1' : '0.5'};"
-            title="${f.nome} (dias ${f.dias[0]}–${f.dias[1]})"></div>`;
-    }).join('');
-
-    // Marcador do dia atual
-    const posAtual = Math.min(100, ((diasCiclo - 1) / 28) * 100);
+    const diasCiclo = Math.floor((new Date() - inicio) / (1000*60*60*24)) + 1;
+    const fase = calcularFase(Math.max(1, diasCiclo));
 
     el.innerHTML = `
-        <div class="fase-card" style="background: linear-gradient(135deg, ${fase.cor}, ${fase.bg});">
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                <span style="font-size:2.5rem;">${fase.emoji}</span>
-                <div>
-                    <h3>${fase.nome}</h3>
-                    <div class="fase-dia">Dia ${diasCiclo} do ciclo</div>
-                </div>
-                <div style="margin-left:auto; text-align:right;">
-                    <div style="font-size:0.72rem; opacity:0.7;">Treino sugerido</div>
-                    <div style="font-size:0.78rem; font-weight:600; margin-top:2px;">${fase.treino}</div>
-                </div>
+        <div class="card-titulo">Fase atual</div>
+        <div style="display:flex; align-items:center; gap:14px;">
+            <span style="font-size:2.8rem; line-height:1;">${fase.emoji}</span>
+            <div style="flex:1;">
+                <div style="font-weight:700; font-size:1.1rem; color:var(--azul-escuro);">${fase.nome}</div>
+                <div style="font-size:0.8rem; color:var(--cinza-meio); margin-top:2px;">Dia ${diasCiclo} do ciclo</div>
+                <div style="font-size:0.8rem; color:var(--cinza-meio); margin-top:4px;">${fase.desc}</div>
             </div>
-
-            <div class="ciclo-barra">${segmentos}</div>
-            <div class="ciclo-marcador">
-                <span>Dia 1</span>
-                <span>Dia 7</span>
-                <span>Dia 14</span>
-                <span>Dia 21</span>
-                <span>Dia 28</span>
-            </div>
-
-            <div class="fase-desc">${fase.desc}</div>
-
-            <div class="proxima-info">
-                ${renderProximasFasesInline(diasCiclo)}
-            </div>
+        </div>
+        <div style="margin-top:12px; background:var(--verde-claro); border-radius:var(--radius-sm); padding:8px 12px; font-size:0.8rem; color:var(--verde); font-weight:600;">
+            Treino sugerido: ${fase.treino}
         </div>`;
-
-    // Próximas fases
-    const proxCard = document.getElementById('proximas-fases-card');
-    const proxEl = document.getElementById('proximas-fases');
-    proxCard.style.display = 'block';
-    proxEl.innerHTML = renderProximasFases(diasCiclo, inicio);
 }
 
-function renderProximasFasesInline(diaAtual) {
-    const proxima = FASES.find(f => f.dias[0] > diaAtual);
-    if (!proxima) return '<span style="color:rgba(255,255,255,0.8)">Fim do ciclo a aproximar-se.</span>';
-    const diasRestantes = proxima.dias[0] - diaAtual;
-    return `<span style="color:rgba(255,255,255,0.85)">Próxima fase: <strong>${proxima.emoji} ${proxima.nome}</strong> em ${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}</span>`;
+// ---- LINHA DO TEMPO ----
+function renderTimeline() {
+    const card = document.getElementById('timeline-wrap-card');
+    if (ciclos.length === 0) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+
+    const ultimo = ciclos[0];
+    const inicio = new Date(ultimo.inicio + 'T00:00:00');
+    const diasCiclo = Math.floor((new Date() - inicio) / (1000*60*60*24)) + 1;
+    const totalDias = 28;
+
+    // Barra
+    const barra = document.getElementById('timeline-barra');
+    barra.innerHTML = FASES.map(f => {
+        const largura = ((f.dias[1] - f.dias[0] + 1) / totalDias) * 100;
+        return `<div class="timeline-seg" style="width:${largura}%; background:${f.cor};" title="${f.nome}">
+            ${largura > 15 ? f.emoji : ''}
+        </div>`;
+    }).join('');
+
+    // Marcador
+    const pct = Math.min(100, (diasCiclo / totalDias) * 100);
+    document.getElementById('timeline-marcador').style.left = pct + '%';
+
+    // Legenda
+    document.getElementById('fase-legenda').innerHTML = FASES.map(f => `
+        <div class="fase-leg-item">
+            <div class="fase-leg-dot" style="background:${f.cor};"></div>
+            ${f.emoji} ${f.nome} (dias ${f.dias[0]}–${f.dias[1]})
+        </div>`).join('');
 }
 
-function renderProximasFases(diaAtual, inicioCiclo) {
-    return FASES.filter(f => f.dias[0] > diaAtual).map(f => {
-        const dataInicio = new Date(inicioCiclo.getTime() + (f.dias[0] - 1) * 24*60*60*1000);
-        const dataFormatada = dataInicio.toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
-        const diasRestantes = f.dias[0] - diaAtual;
+// ---- CALENDÁRIO ----
+function renderCalendario() {
+    const ano = mesAtual.getFullYear();
+    const mes = mesAtual.getMonth();
 
-        return `
-            <div style="display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--cinza-claro);">
-                <div style="width:36px; height:36px; border-radius:50%; background:${f.cor}20; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0;">
-                    ${f.emoji}
-                </div>
-                <div style="flex:1;">
-                    <div style="font-weight:600; font-size:0.9rem;">${f.nome}</div>
-                    <div style="font-size:0.75rem; color:var(--cinza-meio);">dias ${f.dias[0]}–${f.dias[1]} · ${dataFormatada}</div>
-                </div>
-                <div style="text-align:right; font-size:0.8rem; color:var(--cinza-meio);">
-                    em ${diasRestantes} dia${diasRestantes !== 1 ? 's' : ''}
-                </div>
-            </div>`;
-    }).join('') || '<div style="color:var(--cinza-meio); font-size:0.9rem;">Fim do ciclo atual.</div>';
+    document.getElementById('cal-titulo').textContent =
+        new Date(ano, mes, 1).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+
+    const grid = document.getElementById('cal-grid');
+    const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+    // Headers
+    let html = dias.map(d => `<div class="cal-header-dia">${d}</div>`).join('');
+
+    const primeiroDia = new Date(ano, mes, 1).getDay();
+    const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+
+    // Espaços vazios
+    for (let i = 0; i < primeiroDia; i++) {
+        html += `<div class="cal-dia vazio"></div>`;
+    }
+
+    // Construir mapa de datas com fases
+    const mapaFases = construirMapaFases(ano, mes, ultimoDia);
+
+    for (let d = 1; d <= ultimoDia; d++) {
+        const dataStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const info = mapaFases[dataStr] || {};
+        const isHoje = dataStr === hoje();
+        const isSelecionado = dataStr === dataSelecionada;
+
+        let classes = 'cal-dia';
+        if (info.periodo) classes += ' periodo';
+        if (info.inicio) classes += ' inicio';
+        if (info.fim) classes += ' fim';
+        if (info.fase && !info.periodo) classes += ` ${info.fase}`;
+        if (info.previsao) classes += ' previsao';
+        if (isHoje) classes += ' hoje';
+
+        const estilo = isSelecionado ? 'outline: 3px solid var(--azul-escuro); outline-offset: 1px;' : '';
+
+        html += `<div class="${classes}" style="${estilo}" onclick="selecionarDia('${dataStr}')">${d}</div>`;
+    }
+
+    grid.innerHTML = html;
 }
 
-function renderHistorico(ciclos) {
+function construirMapaFases(ano, mes, ultimoDia) {
+    const mapa = {};
+
+    // Para cada ciclo registado
+    for (const ciclo of ciclos) {
+        const inicioCiclo = new Date(ciclo.inicio + 'T00:00:00');
+        const fimPeriodo = ciclo.fim
+            ? new Date(ciclo.fim + 'T00:00:00')
+            : new Date(inicioCiclo.getTime() + 5 * 24*60*60*1000);
+
+        // Marcar dias do período
+        let d = new Date(inicioCiclo);
+        while (d <= fimPeriodo) {
+            const str = d.toISOString().split('T')[0];
+            mapa[str] = {
+                periodo: true,
+                inicio: str === ciclo.inicio,
+                fim: ciclo.fim && str === ciclo.fim
+            };
+            d = new Date(d.getTime() + 24*60*60*1000);
+        }
+
+        // Marcar fases do ciclo (folicular, ovulação, lútea)
+        for (let dia = 6; dia <= 28; dia++) {
+            const data = new Date(inicioCiclo.getTime() + (dia - 1) * 24*60*60*1000);
+            const str = data.toISOString().split('T')[0];
+            if (!mapa[str]) {
+                const fase = calcularFase(dia);
+                mapa[str] = { fase: fase.classe };
+            }
+        }
+    }
+
+    // Previsão do próximo período
+    if (ciclos.length > 0) {
+        let mediaCiclo = 28;
+        if (ciclos.length >= 2) {
+            const duracoes = [];
+            for (let i = 0; i < Math.min(ciclos.length - 1, 6); i++) {
+                const a = new Date(ciclos[i].inicio + 'T00:00:00');
+                const b = new Date(ciclos[i+1].inicio + 'T00:00:00');
+                const diff = Math.round((a - b) / (1000*60*60*24));
+                if (diff > 15 && diff < 50) duracoes.push(diff);
+            }
+            if (duracoes.length > 0) mediaCiclo = Math.round(duracoes.reduce((a,b) => a+b, 0) / duracoes.length);
+        }
+
+        const ultimoInicio = new Date(ciclos[0].inicio + 'T00:00:00');
+        const proximoInicio = new Date(ultimoInicio.getTime() + mediaCiclo * 24*60*60*1000);
+
+        for (let i = 0; i < 6; i++) {
+            const data = new Date(proximoInicio.getTime() + i * 24*60*60*1000);
+            const str = data.toISOString().split('T')[0];
+            if (!mapa[str]) mapa[str] = { previsao: true };
+        }
+    }
+
+    return mapa;
+}
+
+function mudarMes(delta) {
+    mesAtual = new Date(mesAtual.getFullYear(), mesAtual.getMonth() + delta, 1);
+    renderCalendario();
+}
+
+function selecionarDia(data) {
+    dataSelecionada = data;
+    document.getElementById('data-selecionada').value = data;
+    renderCalendario();
+}
+
+document.getElementById('data-selecionada').addEventListener('change', e => {
+    dataSelecionada = e.target.value;
+    // Navegar para o mês da data selecionada
+    const d = new Date(dataSelecionada + 'T00:00:00');
+    mesAtual = new Date(d.getFullYear(), d.getMonth(), 1);
+    renderCalendario();
+});
+
+// ---- REGISTO ----
+function atualizarBotoesRegisto() {
+    const btnInicio = document.getElementById('btn-inicio');
+    const btnFim = document.getElementById('btn-fim');
+    const estado = document.getElementById('registo-estado');
+
+    if (cicloAberto) {
+        btnInicio.className = '';
+        btnFim.className = 'ativo-fim';
+        estado.textContent = `Período iniciado em ${new Date(cicloAberto.inicio + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long' })}. Marca o fim quando terminar.`;
+    } else {
+        btnInicio.className = 'ativo-inicio';
+        btnFim.className = '';
+        estado.textContent = 'Seleciona um dia no calendário e clica "Marcar início".';
+    }
+}
+
+async function registarInicio() {
+    const data = document.getElementById('data-selecionada').value;
+    if (!data) { mostrarToast('Seleciona uma data'); return; }
+
+    const { error } = await db.from('ciclo_menstrual').insert({ inicio: data, fim: null });
+    if (error) { mostrarToast('Erro ao guardar 😕'); return; }
+
+    mostrarToast('Início do período registado ✓');
+    await carregarCiclos();
+}
+
+async function registarFim() {
+    if (!cicloAberto) { mostrarToast('Marca primeiro o início do período'); return; }
+
+    const data = document.getElementById('data-selecionada').value;
+    if (!data) { mostrarToast('Seleciona uma data'); return; }
+
+    if (data < cicloAberto.inicio) { mostrarToast('O fim não pode ser antes do início'); return; }
+
+    const { error } = await db
+        .from('ciclo_menstrual')
+        .update({ fim: data })
+        .eq('id', cicloAberto.id);
+
+    if (error) { mostrarToast('Erro ao guardar 😕'); return; }
+
+    mostrarToast('Fim do período registado ✓');
+    await carregarCiclos();
+}
+
+// ---- HISTÓRICO ----
+function renderHistorico() {
     const el = document.getElementById('historico-ciclos');
-    if (!ciclos || ciclos.length === 0) {
+    if (ciclos.length === 0) {
         el.innerHTML = '<div style="color:var(--cinza-meio);">Sem registos ainda.</div>';
         return;
     }
@@ -314,68 +627,33 @@ function renderHistorico(ciclos) {
         const inicio = new Date(c.inicio + 'T00:00:00');
         const dataStr = inicio.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
 
-        // Calcular duração do ciclo (distância até ao próximo)
-        let duracaoCiclo = '';
-        if (i < ciclos.length - 1) {
-            const anterior = new Date(ciclos[i + 1].inicio + 'T00:00:00');
-            const dias = Math.round((inicio - anterior) / (1000*60*60*24));
-            if (dias > 0 && dias < 60) duracaoCiclo = `${dias} dias`;
+        let duracaoFluxo = '';
+        if (c.fim) {
+            const dias = Math.round((new Date(c.fim + 'T00:00:00') - inicio) / (1000*60*60*24)) + 1;
+            duracaoFluxo = `${dias} dias de fluxo`;
+        } else if (i === 0) {
+            duracaoFluxo = '🔴 Em curso';
         }
 
-        const duracaoFluxo = c.fim
-            ? Math.round((new Date(c.fim) - new Date(c.inicio)) / (1000*60*60*24)) + ' dias de fluxo'
-            : '';
+        let duracaoCiclo = '';
+        if (i < ciclos.length - 1) {
+            const anterior = new Date(ciclos[i+1].inicio + 'T00:00:00');
+            const dias = Math.round((inicio - anterior) / (1000*60*60*24));
+            if (dias > 0 && dias < 60) duracaoCiclo = `ciclo de ${dias} dias`;
+        }
 
         return `
-            <div class="historico-ciclo-item">
-                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <div style="padding:12px 0; border-bottom:1px solid var(--cinza-claro);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="font-weight:600; font-size:0.9rem;">🔴 ${dataStr}</div>
-                    <div style="display:flex; gap:6px; align-items:center;">
-                        ${duracaoCiclo ? `<span class="duracao-badge">${duracaoCiclo}</span>` : ''}
-                    </div>
+                    ${duracaoCiclo ? `<span style="font-size:0.72rem; background:var(--verde-claro); color:var(--verde); padding:2px 8px; border-radius:99px; font-weight:600;">${duracaoCiclo}</span>` : ''}
                 </div>
-                <div style="font-size:0.78rem; color:var(--cinza-meio);">
+                <div style="font-size:0.78rem; color:var(--cinza-meio); margin-top:3px;">
                     ${duracaoFluxo}
                     ${c.notas ? ' · ' + c.notas : ''}
                 </div>
             </div>`;
     }).join('');
-}
-
-// ---- MODAL ----
-function abrirModal() {
-    document.getElementById('modal-ciclo').classList.add('open');
-}
-
-function fecharModal() {
-    document.getElementById('modal-ciclo').classList.remove('open');
-}
-
-document.getElementById('modal-ciclo').addEventListener('click', e => {
-    if (e.target === document.getElementById('modal-ciclo')) fecharModal();
-});
-
-async function guardarCiclo() {
-    const inicio = document.getElementById('c-inicio').value;
-    if (!inicio) { mostrarToast('Escolhe a data de início'); return; }
-
-    const notas = [
-        document.getElementById('c-intensidade').value,
-        document.getElementById('c-notas').value.trim()
-    ].filter(Boolean).join(' · ');
-
-    const payload = {
-        inicio,
-        fim: document.getElementById('c-fim').value || null,
-        notas: notas || null
-    };
-
-    const { error } = await db.from('ciclo_menstrual').insert(payload);
-
-    if (error) { mostrarToast('Erro ao guardar 😕'); return; }
-    mostrarToast('Ciclo registado ✓');
-    fecharModal();
-    await carregarCiclos();
 }
 
 </script>
