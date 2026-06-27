@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
     <style>
+        .cal-wrap { overflow: hidden; }
         .cal-nav {
             display: flex;
             align-items: center;
@@ -31,28 +32,31 @@
         .cal-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 3px;
+            gap: 2px;
+            width: 100%;
         }
         .cal-header-dia {
             text-align: center;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-weight: 600;
             color: var(--cinza-meio);
             text-transform: uppercase;
             padding: 4px 0;
         }
         .cal-dia {
+            width: 100%;
             aspect-ratio: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 500;
             cursor: pointer;
             position: relative;
             transition: all 0.15s;
             color: var(--cinza-texto);
+            min-width: 0;
         }
         .cal-dia:hover { background: var(--cinza-claro); }
         .cal-dia.vazio { cursor: default; }
@@ -237,7 +241,7 @@
             <span class="cal-mes-label" id="cal-titulo"></span>
             <button onclick="mudarMes(1)">›</button>
         </div>
-        <div class="cal-grid" id="cal-grid"></div>
+        <div class="cal-wrap"><div class="cal-grid" id="cal-grid"></div></div>
         <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; font-size:0.72rem; color:var(--cinza-meio);">
             <span>🔴 Período</span>
             <span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;border:2px dashed #FCA5A5;border-radius:50%;"></span> Previsão</span>
