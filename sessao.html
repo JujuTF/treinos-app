@@ -1390,8 +1390,67 @@ async function guardarSessaoCompleta() {
         await db.from('exercicios_sessao').insert(exercicios);
     }
 
-    mostrarToast('Sessão guardada ✓');
-    setTimeout(() => window.location.href = 'index.html', 1200);
+    // Atualizar benchmark automaticamente
+    const benchmarkMsg = await atualizarBenchmarkAutomatico(nome, payload.tempo_wod, payload.rounds_completos, data);
+
+    mostrarToast(benchmarkMsg ? `Sessão guardada · ${benchmarkMsg}` : 'Sessão guardada ✓');
+    setTimeout(() => window.location.href = 'index.html', 1800);
+}
+
+async function atualizarBenchmarkAutomatico(nome, tempo_wod, rounds, data) {
+    try {
+        if (!tempo_wod && !rounds) return null;
+
+        const tipo = tempo_wod ? 'tempo' : 'rondas';
+        const valorAtual = tempo_wod
+            ? `${Math.floor(tempo_wod/60)}:${String(tempo_wod%60).padStart(2,'0')}`
+            : `${rounds} rondas`;
+
+        // Buscar benchmark existente
+        const { data: existentes } = await db
+            .from('benchmarks')
+            .select('*')
+            .ilike('nome', nome)
+            .eq('tipo', tipo)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (!existentes || existentes.length === 0) {
+            // Nao existe — criar
+            await db.from('benchmarks').insert({
+                nome, resultado: valorAtual, tipo, data,
+                notas: 'Registado automaticamente'
+            });
+            return '🏆 Novo benchmark!';
+        }
+
+        const anterior = existentes[0];
+        let eMelhor = false;
+
+        if (tipo === 'tempo') {
+            const partes = anterior.resultado.split(':');
+            const segsAnteriores = partes.length === 2
+                ? parseInt(partes[0]) * 60 + parseInt(partes[1])
+                : parseInt(anterior.resultado) * 60;
+            eMelhor = tempo_wod < segsAnteriores;
+        } else {
+            const rondasAnteriores = parseInt(anterior.resultado);
+            eMelhor = rounds > rondasAnteriores;
+        }
+
+        if (eMelhor) {
+            await db.from('benchmarks').insert({
+                nome, resultado: valorAtual, tipo, data,
+                notas: `Novo recorde! Anterior: ${anterior.resultado}`
+            });
+            return '🏆 Novo recorde pessoal!';
+        }
+
+        return null;
+    } catch(e) {
+        console.error('Erro benchmark:', e);
+        return null;
+    }
 }
 
 </script>
