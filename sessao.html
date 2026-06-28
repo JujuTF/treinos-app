@@ -740,6 +740,7 @@ function parsearMD(md) {
                 subtitulo: '',
                 tipo: 'normal',
                 rondas: null,
+                peso_bloco: null,
                 exercicios: [],
                 avisos: [],
                 texto: []
@@ -759,13 +760,16 @@ function parsearMD(md) {
 
         if (!blocoAtual) continue;
 
-        // Subtítulo (bold lines com ** ** no início)
-        if (linha.startsWith('**') && linha.endsWith('**') && !linha.includes('|')) {
+        // Subtítulo (linhas com ** no início, com ou sem | )
+        if (linha.startsWith('**') && !linha.startsWith('| ')) {
             const subLinha = linha.replace(/\*\*/g, '');
             blocoAtual.subtitulo += subLinha + ' ';
-            // Extrair rondas do subtítulo: "4 rondas", "3 rounds", "Formato: 4 rondas"
+            // Extrair rondas: "Formato: 4 rondas | ..."
             const rondasMatch = subLinha.match(/(\d+)\s*ronda/i) || subLinha.match(/(\d+)\s*round/i);
             if (rondasMatch) blocoAtual.rondas = parseInt(rondasMatch[1]);
+            // Extrair peso do bloco: "Peso: 8 kg", "8–10 kg"
+            const pesoMatch = subLinha.match(/(\d+)(?:[–\-]\d+)?\s*kg/);
+            if (pesoMatch && !blocoAtual.peso_bloco) blocoAtual.peso_bloco = pesoMatch[0];
             continue;
         }
 
@@ -814,9 +818,8 @@ function parsearMD(md) {
                         feito: false
                     };
 
-                    // Extrair peso do subtítulo do bloco
-                    const pesoMatch = blocoAtual.subtitulo.match(/(\d+[\.,]?\d*)\s*kg/);
-                    if (pesoMatch) ex.peso_plano = pesoMatch[1] + 'kg';
+                    // Usar peso do bloco se disponível
+                    if (blocoAtual.peso_bloco) ex.peso_plano = blocoAtual.peso_bloco;
 
                     if (ex.nome && ex.nome.length > 1) {
                         blocoAtual.exercicios.push(ex);
