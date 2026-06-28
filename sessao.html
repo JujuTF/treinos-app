@@ -925,21 +925,40 @@ function renderizarPlano() {
         const isWarmup = bloco.tipo === 'warmup';
         const badgeClass = isWOD ? 'laranja' : isWarmup ? 'cinza' : '';
         const badgeText = isWOD ? 'WOD' : isWarmup ? 'Warm-up' : 'Bloco';
+        const totalRondas = bloco.rondas || 1;
+        const temRondas = bloco.rondas && !isWOD;
 
-        const rondasInfo = bloco.rondas ? ` · ${bloco.rondas} rondas` : '';
+        // Gerar conteúdo dos exercícios — agrupado por ronda se aplicável
+        let exerciciosHTML = '';
+        if (temRondas) {
+            for (let r = 1; r <= totalRondas; r++) {
+                exerciciosHTML += `
+                    <div style="margin-bottom:12px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                            <div style="background:var(--verde); color:white; font-size:0.7rem; font-weight:700; padding:3px 10px; border-radius:99px; text-transform:uppercase; letter-spacing:0.06em;">
+                                Ronda ${r}/${totalRondas}
+                            </div>
+                            <div style="flex:1; height:1px; background:var(--cinza-borda);"></div>
+                        </div>
+                        ${bloco.exercicios.map((ex, ei) => renderExercicio(bi, ei, ex, r)).join('')}
+                    </div>`;
+            }
+        } else {
+            exerciciosHTML = bloco.exercicios.map((ex, ei) => renderExercicio(bi, ei, ex, 0)).join('');
+        }
+
         div.innerHTML = `
             <div class="bloco-header" onclick="toggleBloco(${bi})">
                 <div class="bloco-header-info">
                     <div class="bloco-titulo">${bloco.titulo}</div>
                     ${bloco.subtitulo ? `<div class="bloco-sub">${bloco.subtitulo.trim()}</div>` : ''}
                 </div>
-                <span class="bloco-badge ${badgeClass}">${badgeText}${rondasInfo}</span>
+                <span class="bloco-badge ${badgeClass}">${badgeText}${temRondas ? ` · ${totalRondas} rondas` : ''}</span>
             </div>
             <div class="bloco-corpo" id="bloco-corpo-${bi}">
                 ${bloco.avisos.map(a => `<div class="warn-box">${a}</div>`).join('')}
                 ${isWOD ? renderCronometro() : ''}
-                ${bloco.rondas && !isWOD ? renderCounterRondas(bi, bloco.rondas) : ''}
-                ${bloco.exercicios.map((ex, ei) => renderExercicio(bi, ei, ex)).join('')}
+                ${exerciciosHTML}
             </div>`;
 
         container.appendChild(div);
@@ -1078,19 +1097,19 @@ function cancelarCounterEx() {
     }
 }
 
-function renderExercicio(bi, ei, ex) {
-    const id = `ex-${bi}-${ei}`;
-    // Pré-preencher com valores da sessão anterior
+function renderExercicio(bi, ei, ex, ronda) {
+    // ronda=0 significa sem rondas; ronda>=1 significa ronda específica
+    const id = ronda > 0 ? `ex-${bi}-${ei}-r${ronda}` : `ex-${bi}-${ei}`;
     const anterior = exerciciosAnteriores[ex.nome.toLowerCase()] || {};
     const pesoValor = anterior.peso_kg ? anterior.peso_kg : (ex.peso_plano ? ex.peso_plano.replace('kg','') : '');
-    const repsValor = anterior.reps || ex.reps || '';
+    const repsValor = ronda > 0 ? (ex.reps || '') : (anterior.reps || ex.reps || '');
 
     return `
         <div class="exercicio-item" id="${id}">
             <div class="exercicio-nome-row">
-                <div class="exercicio-check" id="check-${id}" onclick="toggleFeito('${id}', ${bi}, ${ei})"></div>
+                <div class="exercicio-check" id="check-${id}" onclick="toggleFeito('${id}')"></div>
                 <div class="exercicio-nome">${ex.nome}</div>
-                <button onclick="abrirCounterEx('${id}', '${ex.nome.replace(/'/g,"\'")}', '${ex.reps || ''}')" 
+                <button onclick="abrirCounterEx('${id}', '${ex.nome.replace(/'/g,"\'")}', '${ex.reps || ''}')"
                     style="background:none; border:none; cursor:pointer; color:var(--verde); font-size:1.1rem; padding:4px;" title="Contador">⏱</button>
             </div>
             ${(ex.reps || ex.peso_plano) ? `
@@ -1101,19 +1120,15 @@ function renderExercicio(bi, ei, ex) {
             </div>` : ''}
             <div class="exercicio-registo">
                 <div class="registo-campo">
-                    <label>Peso usado${anterior.peso_kg ? ' <span style="color:var(--verde);font-size:0.65rem;">↩ anterior</span>' : ''}</label>
-                    <input type="text" id="peso-${id}" value="${pesoValor}" placeholder="${ex.peso_plano || 'kg'}" 
+                    <label>Peso${anterior.peso_kg && ronda <= 1 ? ' <span style="color:var(--verde);font-size:0.65rem;">↩</span>' : ''}</label>
+                    <input type="text" id="peso-${id}" value="${ronda <= 1 ? pesoValor : ''}" placeholder="${ex.peso_plano || 'kg'}"
                         oninput="autoFeito('${id}')">
                 </div>
                 <div class="registo-campo">
-                    <label>Reps / Séries${anterior.reps ? ' <span style="color:var(--verde);font-size:0.65rem;">↩ anterior</span>' : ''}</label>
-                    <input type="text" id="reps-${id}" value="${repsValor}" placeholder="${ex.reps || 'reps'}"
+                    <label>Reps</label>
+                    <input type="text" id="reps-${id}" value="${ronda <= 1 ? repsValor : ''}" placeholder="${ex.reps || 'reps'}"
                         oninput="autoFeito('${id}')">
                 </div>
-            </div>
-            <div class="notas-exercicio">
-                <textarea id="nota-${id}" placeholder="Notas (opcional)..." rows="1"
-                    onfocus="this.rows=3" onblur="if(!this.value)this.rows=1"></textarea>
             </div>
         </div>`;
 }
@@ -1186,9 +1201,10 @@ function toggleBloco(bi) {
     corpo.style.display = corpo.style.display === 'none' ? 'block' : 'none';
 }
 
-function toggleFeito(id, bi, ei) {
+function toggleFeito(id) {
     const check = document.getElementById(`check-${id}`);
     const item = document.getElementById(id);
+    if (!check || !item) return;
     const feito = !check.classList.contains('checked');
 
     check.classList.toggle('checked', feito);
@@ -1219,7 +1235,7 @@ function autoFeito(id) {
 }
 
 function atualizarProgresso() {
-    const total = blocosData.reduce((sum, b) => sum + b.exercicios.length, 0);
+    const total = document.querySelectorAll('.exercicio-item').length;
     const feitos = exerciciosFeitos.size;
     const pct = total > 0 ? (feitos / total) * 100 : 0;
     document.getElementById('progresso-fill').style.width = pct + '%';
@@ -1308,22 +1324,42 @@ async function guardarSessaoCompleta() {
     if (blocosData.length > 0) {
         let ordem = 0;
         blocosData.forEach((bloco, bi) => {
+            const totalRondas = bloco.rondas || 1;
+            const temRondas = bloco.rondas && bloco.tipo !== 'wod';
             bloco.exercicios.forEach((ex, ei) => {
-                const id = `ex-${bi}-${ei}`;
-                const peso = document.getElementById(`peso-${id}`)?.value.trim();
-                const reps = document.getElementById(`reps-${id}`)?.value.trim();
-                const nota = document.getElementById(`nota-${id}`)?.value.trim();
-
-                if (peso || reps || exerciciosFeitos.has(id)) {
-                    exercicios.push({
-                        sessao_id: sessao.id,
-                        nome: ex.nome,
-                        series: null,
-                        reps: reps || ex.reps || null,
-                        peso_kg: peso ? parseFloat(peso.replace(',', '.').replace('kg','')) : null,
-                        notas: nota || null,
-                        ordem: ordem++
-                    });
+                if (temRondas) {
+                    for (let r = 1; r <= totalRondas; r++) {
+                        const id = `ex-${bi}-${ei}-r${r}`;
+                        const peso = document.getElementById(`peso-${id}`)?.value.trim();
+                        const reps = document.getElementById(`reps-${id}`)?.value.trim();
+                        if (peso || reps || exerciciosFeitos.has(id)) {
+                            exercicios.push({
+                                sessao_id: sessao.id,
+                                nome: `${ex.nome} (R${r})`,
+                                series: null,
+                                reps: reps || ex.reps || null,
+                                peso_kg: peso ? parseFloat(peso.replace(',', '.').replace('kg','')) : null,
+                                notas: null,
+                                ordem: ordem++
+                            });
+                        }
+                    }
+                } else {
+                    const id = `ex-${bi}-${ei}`;
+                    const peso = document.getElementById(`peso-${id}`)?.value.trim();
+                    const reps = document.getElementById(`reps-${id}`)?.value.trim();
+                    const nota = document.getElementById(`nota-${id}`)?.value.trim();
+                    if (peso || reps || exerciciosFeitos.has(id)) {
+                        exercicios.push({
+                            sessao_id: sessao.id,
+                            nome: ex.nome,
+                            series: null,
+                            reps: reps || ex.reps || null,
+                            peso_kg: peso ? parseFloat(peso.replace(',', '.').replace('kg','')) : null,
+                            notas: nota || null,
+                            ordem: ordem++
+                        });
+                    }
                 }
             });
         });
