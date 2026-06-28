@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Estatísticas</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232A9D8F'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
+    <style>
+        .tabs {
+            display: flex;
+            background: var(--branco);
+            border-radius: var(--radius);
+            padding: 4px;
+            margin-bottom: 16px;
+            box-shadow: var(--sombra);
+            overflow-x: auto;
+        }
+        .tab-btn {
+            flex-shrink: 0;
+            padding: 9px 12px;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: none;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--cinza-meio);
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .tab-btn.active { background: var(--verde); color: white; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .stat-box {
+            background: var(--branco);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: var(--sombra);
+            text-align: center;
+        }
+        .stat-valor {
+            font-family: 'DM Mono', monospace;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--azul-escuro);
+            line-height: 1;
+        }
+        .stat-label {
+            font-size: 0.72rem;
+            color: var(--cinza-meio);
+            margin-top: 4px;
+        }
+        .stat-box.verde .stat-valor { color: var(--verde); }
+        .stat-box.laranja .stat-valor { color: var(--laranja); }
+
+        .periodo-selector {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+        .periodo-btn {
+            padding: 6px 14px;
+            border: 1.5px solid var(--cinza-borda);
+            border-radius: 99px;
+            background: var(--branco);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--cinza-meio);
+            transition: all 0.15s;
+        }
+        .periodo-btn.active {
+            background: var(--azul-escuro);
+            border-color: var(--azul-escuro);
+            color: white;
+        }
+
+        .treino-tipo-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--cinza-claro);
+        }
+        .treino-tipo-nome { font-size: 0.85rem; font-weight: 500; flex: 1; }
+        .treino-tipo-barra-wrap {
+            flex: 2;
+            background: var(--cinza-claro);
+            border-radius: 99px;
+            height: 8px;
+            overflow: hidden;
+        }
+        .treino-tipo-barra-fill {
+            height: 100%;
+            border-radius: 99px;
+            background: var(--verde);
+        }
+        .treino-tipo-num {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--cinza-meio);
+            width: 24px;
+            text-align: right;
+        }
+
+        .streak-display {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 0;
+        }
+        .streak-num {
+            font-family: 'DM Mono', monospace;
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--laranja);
+            line-height: 1;
+        }
+        .streak-info { flex: 1; }
+        .streak-label { font-weight: 700; font-size: 1rem; color: var(--azul-escuro); }
+        .streak-sub { font-size: 0.8rem; color: var(--cinza-meio); margin-top: 2px; }
+
+        .corr-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--cinza-claro);
+            font-size: 0.85rem;
+        }
+        .corr-item:last-child { border-bottom: none; }
+        .corr-valor {
+            font-family: 'DM Mono', monospace;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <a href="index.html" style="color:var(--cinza-meio); display:flex;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <h1>Estatísticas</h1>
+    </div>
+    <div class="periodo-selector">
+        <button class="periodo-btn" onclick="mudarPeriodo(30, this)">30d</button>
+        <button class="periodo-btn active" onclick="mudarPeriodo(90, this)">90d</button>
+        <button class="periodo-btn" onclick="mudarPeriodo(365, this)">1a</button>
+    </div>
+</header>
+
+<div class="page active">
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="mudarTab('geral')">📊 Geral</button>
+        <button class="tab-btn" onclick="mudarTab('corpo')">⚖️ Corpo</button>
+        <button class="tab-btn" onclick="mudarTab('treinos')">🏋️ Treinos</button>
+        <button class="tab-btn" onclick="mudarTab('saude')">❤️ Saúde</button>
+    </div>
+
+    <!-- TAB GERAL -->
+    <div class="tab-panel active" id="tab-geral">
+
+        <!-- Streak -->
+        <div class="card">
+            <div class="card-titulo">Streak de treinos</div>
+            <div class="streak-display" id="streak-display">
+                <div class="streak-num" id="streak-num">—</div>
+                <div class="streak-info">
+                    <div class="streak-label" id="streak-label">A calcular...</div>
+                    <div class="streak-sub" id="streak-sub"></div>
+                </div>
+                <span style="font-size:2rem;" id="streak-emoji">🔥</span>
+            </div>
+            <div id="streak-historico" style="font-size:0.8rem; color:var(--cinza-meio);"></div>
+        </div>
+
+        <!-- Stats resumo -->
+        <div class="stat-grid" id="stats-resumo"></div>
+
+        <!-- Treinos por tipo -->
+        <div class="card">
+            <div class="card-titulo">Treinos por tipo</div>
+            <div id="treinos-por-tipo"></div>
+        </div>
+
+        <!-- Dias com mais treinos -->
+        <div class="card">
+            <div class="card-titulo">Dias da semana mais ativos</div>
+            <canvas id="grafico-dias-semana" height="160"></canvas>
+        </div>
+
+    </div>
+
+    <!-- TAB CORPO -->
+    <div class="tab-panel" id="tab-corpo">
+
+        <div class="card">
+            <div class="card-titulo">Evolução do peso</div>
+            <canvas id="grafico-peso" height="160"></canvas>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Gordura corporal vs Massa muscular</div>
+            <canvas id="grafico-composicao" height="180"></canvas>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Outras métricas</div>
+            <div style="margin-bottom:10px;">
+                <select id="metrica-sel" onchange="renderGraficoMetrica()" style="width:100%; padding:8px 10px; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); font-family:'DM Sans',sans-serif; font-size:0.9rem; outline:none;">
+                    <option value="agua_corporal">💧 Água corporal (%)</option>
+                    <option value="gordura_visceral">⚠️ Gordura visceral</option>
+                    <option value="idade_metabolica">⚡ Idade metabólica</option>
+                    <option value="massa_ossea">🦴 Massa óssea (kg)</option>
+                    <option value="imc">📐 IMC</option>
+                </select>
+            </div>
+            <canvas id="grafico-metrica-extra" height="140"></canvas>
+        </div>
+
+    </div>
+
+    <!-- TAB TREINOS -->
+    <div class="tab-panel" id="tab-treinos">
+
+        <div class="card">
+            <div class="card-titulo">Treinos por semana</div>
+            <canvas id="grafico-treinos-semana" height="160"></canvas>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Tempo médio WOD por tipo</div>
+            <div id="tempo-medio-tipo"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Últimas sessões</div>
+            <div id="lista-sessoes-stats"></div>
+        </div>
+
+    </div>
+
+    <!-- TAB SAÚDE -->
+    <div class="tab-panel" id="tab-saude">
+
+        <div class="card">
+            <div class="card-titulo">Energia ao longo do tempo</div>
+            <canvas id="grafico-energia" height="140"></canvas>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Sono ao longo do tempo</div>
+            <canvas id="grafico-sono" height="140"></canvas>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Correlações</div>
+            <div id="correlacoes"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-titulo">Flares de fibromialgia</div>
+            <div id="flares-stats"></div>
+        </div>
+
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="js/config.js"></script>
+<script>
+
+async function verificarAuth() {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) window.location.href = 'login.html';
+}
+verificarAuth();
+
+let periodoAtivo = 90;
+let dadosSessoes = [];
+let dadosRegistos = [];
+let dadosMetricas = [];
+let graficos = {};
+
+function mostrarToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function dataInicio(diasAtras) {
+    const d = new Date();
+    d.setDate(d.getDate() - diasAtras);
+    return d.toISOString().split('T')[0];
+}
+
+function hoje() { return new Date().toISOString().split('T')[0]; }
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await carregarTudo();
+});
+
+async function carregarTudo() {
+    const inicio = dataInicio(periodoAtivo);
+
+    const [{ data: sessoes }, { data: registos }, { data: metricas }] = await Promise.all([
+        db.from('sessoes_treino').select('*').gte('data', inicio).order('data', { ascending: true }),
+        db.from('registo_diario').select('*').gte('data', inicio).order('data', { ascending: true }),
+        db.from('metricas_corporais').select('*').order('data', { ascending: true })
+    ]);
+
+    dadosSessoes = sessoes || [];
+    dadosRegistos = registos || [];
+    dadosMetricas = metricas || [];
+
+    renderTabAtiva();
+}
+
+function mudarPeriodo(dias, btn) {
+    periodoAtivo = dias;
+    document.querySelectorAll('.periodo-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // Destruir gráficos existentes
+    Object.values(graficos).forEach(g => { try { g.destroy(); } catch(e) {} });
+    graficos = {};
+    carregarTudo();
+}
+
+function mudarTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+        const tabs = ['geral', 'corpo', 'treinos', 'saude'];
+        b.classList.toggle('active', tabs[i] === tab);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    renderTabAtiva();
+}
+
+function tabAtiva() {
+    const p = document.querySelector('.tab-panel.active');
+    return p ? p.id.replace('tab-', '') : 'geral';
+}
+
+function renderTabAtiva() {
+    const tab = tabAtiva();
+    if (tab === 'geral') renderGeral();
+    if (tab === 'corpo') renderCorpo();
+    if (tab === 'treinos') renderTreinos();
+    if (tab === 'saude') renderSaude();
+}
+
+// =============================================
+// TAB GERAL
+// =============================================
+
+function renderGeral() {
+    renderStreak();
+    renderStatsResumo();
+    renderTreinosPorTipo();
+    renderGraficoDiasSemana();
+}
+
+function renderStreak() {
+    if (dadosSessoes.length === 0) {
+        document.getElementById('streak-num').textContent = '0';
+        document.getElementById('streak-label').textContent = 'Sem treinos ainda';
+        return;
+    }
+
+    // Calcular streak atual (dias consecutivos com treino)
+    const datasComTreino = new Set(dadosSessoes.map(s => s.data));
+    let streakAtual = 0;
+    let d = new Date();
+
+    // Verificar se treinou hoje ou ontem para iniciar streak
+    const hojeStr = d.toISOString().split('T')[0];
+    const ontemStr = new Date(d.getTime() - 86400000).toISOString().split('T')[0];
+
+    if (!datasComTreino.has(hojeStr) && !datasComTreino.has(ontemStr)) {
+        streakAtual = 0;
+    } else {
+        let dataVerif = datasComTreino.has(hojeStr) ? new Date() : new Date(d.getTime() - 86400000);
+        while (datasComTreino.has(dataVerif.toISOString().split('T')[0])) {
+            streakAtual++;
+            dataVerif = new Date(dataVerif.getTime() - 86400000);
+        }
+    }
+
+    // Melhor streak histórico
+    const todasDatas = [...datasComTreino].sort();
+    let melhorStreak = 0, streakTemp = 1;
+    for (let i = 1; i < todasDatas.length; i++) {
+        const diff = (new Date(todasDatas[i]) - new Date(todasDatas[i-1])) / 86400000;
+        if (diff === 1) { streakTemp++; melhorStreak = Math.max(melhorStreak, streakTemp); }
+        else { streakTemp = 1; }
+    }
+    melhorStreak = Math.max(melhorStreak, streakAtual, 1);
+
+    document.getElementById('streak-num').textContent = streakAtual;
+    document.getElementById('streak-emoji').textContent = streakAtual >= 7 ? '🔥' : streakAtual >= 3 ? '⚡' : '💪';
+    document.getElementById('streak-label').textContent = streakAtual === 0
+        ? 'Streak interrompido'
+        : `${streakAtual} dia${streakAtual > 1 ? 's' : ''} consecutivo${streakAtual > 1 ? 's' : ''}`;
+    document.getElementById('streak-sub').textContent = `Melhor streak: ${melhorStreak} dias`;
+}
+
+function renderStatsResumo() {
+    const totalTreinos = dadosSessoes.length;
+    const mediaEnergia = dadosRegistos.filter(r => r.energia).length > 0
+        ? (dadosRegistos.filter(r => r.energia).reduce((s, r) => s + r.energia, 0) / dadosRegistos.filter(r => r.energia).length).toFixed(1)
+        : '—';
+    const mediaSono = dadosRegistos.filter(r => r.horas_sono).length > 0
+        ? (dadosRegistos.filter(r => r.horas_sono).reduce((s, r) => s + parseFloat(r.horas_sono), 0) / dadosRegistos.filter(r => r.horas_sono).length).toFixed(1)
+        : '—';
+    const totalFlares = dadosRegistos.filter(r => r.flare_fibromialgia).length;
+
+    document.getElementById('stats-resumo').innerHTML = `
+        <div class="stat-box verde">
+            <div class="stat-valor">${totalTreinos}</div>
+            <div class="stat-label">treinos</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-valor">${mediaEnergia}</div>
+            <div class="stat-label">energia média</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-valor">${mediaSono}h</div>
+            <div class="stat-label">sono médio</div>
+        </div>
+        <div class="stat-box laranja">
+            <div class="stat-valor">${totalFlares}</div>
+            <div class="stat-label">flares</div>
+        </div>`;
+}
+
+function renderTreinosPorTipo() {
+    const el = document.getElementById('treinos-por-tipo');
+    if (dadosSessoes.length === 0) { el.innerHTML = '<div style="color:var(--cinza-meio);">Sem dados.</div>'; return; }
+
+    const contagem = {};
+    for (const s of dadosSessoes) {
+        const tipo = s.tipo || 'Outro';
+        contagem[tipo] = (contagem[tipo] || 0) + 1;
+    }
+    const max = Math.max(...Object.values(contagem));
+    const cores = { 'WOD': 'var(--laranja)', 'Força': 'var(--verde)', 'Cardio': '#60A5FA', 'Mobilidade': '#A78BFA', 'Outro': 'var(--cinza-meio)' };
+
+    el.innerHTML = Object.entries(contagem)
+        .sort((a, b) => b[1] - a[1])
+        .map(([tipo, n]) => `
+            <div class="treino-tipo-bar">
+                <div class="treino-tipo-nome">${tipo}</div>
+                <div class="treino-tipo-barra-wrap">
+                    <div class="treino-tipo-barra-fill" style="width:${(n/max)*100}%; background:${cores[tipo] || 'var(--verde)'};"></div>
+                </div>
+                <div class="treino-tipo-num">${n}</div>
+            </div>`).join('');
+}
+
+function renderGraficoDiasSemana() {
+    const ctx = document.getElementById('grafico-dias-semana');
+    if (!ctx || graficos['dias-semana']) return;
+
+    const dias = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const contagem = new Array(7).fill(0);
+    for (const s of dadosSessoes) {
+        const d = new Date(s.data + 'T00:00:00');
+        contagem[d.getDay()]++;
+    }
+
+    graficos['dias-semana'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: dias,
+            datasets: [{
+                data: contagem,
+                backgroundColor: contagem.map(v => v === Math.max(...contagem) ? '#2A9D8F' : '#E8F7F5'),
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#F3F4F6' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+}
+
+// =============================================
+// TAB CORPO
+// =============================================
+
+function renderCorpo() {
+    renderGraficoPeso();
+    renderGraficoComposicao();
+    renderGraficoMetrica();
+}
+
+function renderGraficoPeso() {
+    const ctx = document.getElementById('grafico-peso');
+    if (!ctx || graficos['peso'] || dadosMetricas.length === 0) return;
+
+    const labels = dadosMetricas.map(d => new Date(d.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }));
+    const pesos = dadosMetricas.map(d => d.peso_kg);
+
+    graficos['peso'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Peso (kg)',
+                data: pesos,
+                borderColor: '#2A9D8F',
+                backgroundColor: 'rgba(42,157,143,0.08)',
+                pointBackgroundColor: '#2A9D8F',
+                pointRadius: 4,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: false, grid: { color: '#F3F4F6' } },
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } }
+            }
+        }
+    });
+}
+
+function renderGraficoComposicao() {
+    const ctx = document.getElementById('grafico-composicao');
+    if (!ctx || graficos['composicao'] || dadosMetricas.length === 0) return;
+
+    const comDados = dadosMetricas.filter(d => d.gordura_corporal && d.massa_muscular);
+    if (comDados.length === 0) {
+        ctx.parentElement.innerHTML = '<div class="card-titulo">Gordura corporal vs Massa muscular</div><div style="color:var(--cinza-meio); font-size:0.9rem;">Sem dados suficientes.</div>';
+        return;
+    }
+
+    const labels = comDados.map(d => new Date(d.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }));
+
+    graficos['composicao'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Gordura (%)',
+                    data: comDados.map(d => d.gordura_corporal),
+                    borderColor: '#E76F51',
+                    backgroundColor: 'rgba(231,111,81,0.05)',
+                    pointBackgroundColor: '#E76F51',
+                    pointRadius: 4,
+                    tension: 0.3,
+                    yAxisID: 'y1'
+                },
+                {
+                    label: 'Músculo (kg)',
+                    data: comDados.map(d => d.massa_muscular),
+                    borderColor: '#2A9D8F',
+                    backgroundColor: 'rgba(42,157,143,0.05)',
+                    pointBackgroundColor: '#2A9D8F',
+                    pointRadius: 4,
+                    tension: 0.3,
+                    yAxisID: 'y2'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: true, position: 'bottom' } },
+            scales: {
+                y1: { type: 'linear', position: 'left', beginAtZero: false, grid: { color: '#F3F4F6' }, ticks: { color: '#E76F51' } },
+                y2: { type: 'linear', position: 'right', beginAtZero: false, grid: { display: false }, ticks: { color: '#2A9D8F' } },
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } }
+            }
+        }
+    });
+}
+
+function renderGraficoMetrica() {
+    const campo = document.getElementById('metrica-sel')?.value || 'agua_corporal';
+    const ctx = document.getElementById('grafico-metrica-extra');
+    if (!ctx) return;
+
+    if (graficos['metrica-extra']) { graficos['metrica-extra'].destroy(); delete graficos['metrica-extra']; }
+
+    const comDados = dadosMetricas.filter(d => d[campo] !== null && d[campo] !== undefined);
+    if (comDados.length === 0) return;
+
+    const labels = comDados.map(d => new Date(d.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }));
+    const valores = comDados.map(d => d[campo]);
+
+    graficos['metrica-extra'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                data: valores,
+                borderColor: '#A855F7',
+                backgroundColor: 'rgba(168,85,247,0.06)',
+                pointBackgroundColor: '#A855F7',
+                pointRadius: 4,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: false, grid: { color: '#F3F4F6' } },
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } }
+            }
+        }
+    });
+}
+
+// =============================================
+// TAB TREINOS
+// =============================================
+
+function renderTreinos() {
+    renderGraficoTreinosPorSemana();
+    renderTempoMedioPorTipo();
+    renderListaSessoes();
+}
+
+function renderGraficoTreinosPorSemana() {
+    const ctx = document.getElementById('grafico-treinos-semana');
+    if (!ctx || graficos['treinos-semana']) return;
+
+    // Agrupar por semana
+    const semanas = {};
+    for (const s of dadosSessoes) {
+        const d = new Date(s.data + 'T00:00:00');
+        const diaSemana = d.getDay();
+        const diasDesdeSegunda = diaSemana === 0 ? 6 : diaSemana - 1;
+        const segunda = new Date(d);
+        segunda.setDate(d.getDate() - diasDesdeSegunda);
+        const key = segunda.toISOString().split('T')[0];
+        semanas[key] = (semanas[key] || 0) + 1;
+    }
+
+    const keys = Object.keys(semanas).sort();
+    const labels = keys.map(k => new Date(k + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }));
+
+    graficos['treinos-semana'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Treinos',
+                data: keys.map(k => semanas[k]),
+                backgroundColor: '#2A9D8F',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: '#F3F4F6' } },
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }
+            }
+        }
+    });
+}
+
+function renderTempoMedioPorTipo() {
+    const el = document.getElementById('tempo-medio-tipo');
+    const comTempo = dadosSessoes.filter(s => s.tempo_wod);
+    if (comTempo.length === 0) { el.innerHTML = '<div style="color:var(--cinza-meio);">Sem dados de tempo.</div>'; return; }
+
+    const porTipo = {};
+    for (const s of comTempo) {
+        const tipo = s.tipo || 'Outro';
+        if (!porTipo[tipo]) porTipo[tipo] = [];
+        porTipo[tipo].push(s.tempo_wod);
+    }
+
+    el.innerHTML = Object.entries(porTipo).map(([tipo, tempos]) => {
+        const media = Math.round(tempos.reduce((a, b) => a + b, 0) / tempos.length);
+        const m = Math.floor(media / 60);
+        const s = media % 60;
+        return `
+            <div class="corr-item">
+                <span>${tipo}</span>
+                <span class="corr-valor" style="color:var(--laranja);">${m}:${String(s).padStart(2,'0')}</span>
+            </div>`;
+    }).join('');
+}
+
+function renderListaSessoes() {
+    const el = document.getElementById('lista-sessoes-stats');
+    const ultimas = [...dadosSessoes].reverse().slice(0, 5);
+
+    if (ultimas.length === 0) { el.innerHTML = '<div style="color:var(--cinza-meio);">Sem sessões.</div>'; return; }
+
+    el.innerHTML = ultimas.map(s => {
+        const data = new Date(s.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+        const tempo = s.tempo_wod ? `${Math.floor(s.tempo_wod/60)}:${String(s.tempo_wod%60).padStart(2,'0')}` : '';
+        return `
+            <div class="corr-item" onclick="window.location.href='sessao.html?id=${s.id}'" style="cursor:pointer;">
+                <div>
+                    <div style="font-weight:600;">${s.nome_treino}</div>
+                    <div style="font-size:0.75rem; color:var(--cinza-meio);">${data}</div>
+                </div>
+                ${tempo ? `<span class="corr-valor" style="color:var(--laranja);">${tempo}</span>` : ''}
+            </div>`;
+    }).join('');
+}
+
+// =============================================
+// TAB SAÚDE
+// =============================================
+
+function renderSaude() {
+    renderGraficoEnergia();
+    renderGraficoSono();
+    renderCorrelacoes();
+    renderFlaresStats();
+}
+
+function renderGraficoEnergia() {
+    const ctx = document.getElementById('grafico-energia');
+    if (!ctx || graficos['energia']) return;
+
+    const comEnergia = dadosRegistos.filter(r => r.energia);
+    if (comEnergia.length === 0) return;
+
+    const labels = comEnergia.map(r => new Date(r.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }));
+    const cores = ['', '#FECACA', '#FED7AA', '#FEF08A', '#86EFAC', '#6EE7B7'];
+
+    graficos['energia'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                data: comEnergia.map(r => r.energia),
+                backgroundColor: comEnergia.map(r => cores[r.energia] || '#E8F7F5'),
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { min: 0, max: 5, ticks: { stepSize: 1 }, grid: { color: '#F3F4F6' } },
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 10 } }
+            }
+        }
+    });
+}
+
+function renderGraficoSono() {
+    const ctx = document.getElementById('grafico-sono');
+    if (!ctx || graficos['sono']) return;
+
+    const comSono = dadosRegistos.filter(r => r.horas_sono);
+    if (comSono.length === 0) return;
+
+    const labels = comSono.map(r => new Date(r.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' }));
+    const mediaSono = comSono.reduce((s, r) => s + parseFloat(r.horas_sono), 0) / comSono.length;
+
+    graficos['sono'] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Sono (h)',
+                    data: comSono.map(r => r.horas_sono),
+                    borderColor: '#60A5FA',
+                    backgroundColor: 'rgba(96,165,250,0.06)',
+                    pointBackgroundColor: '#60A5FA',
+                    pointRadius: 3,
+                    tension: 0.3,
+                    fill: true
+                },
+                {
+                    label: `Média (${mediaSono.toFixed(1)}h)`,
+                    data: new Array(comSono.length).fill(mediaSono),
+                    borderColor: 'rgba(96,165,250,0.4)',
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: true, position: 'bottom' } },
+            scales: {
+                y: { beginAtZero: false, grid: { color: '#F3F4F6' } },
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 8 } }
+            }
+        }
+    });
+}
+
+function renderCorrelacoes() {
+    const el = document.getElementById('correlacoes');
+
+    // Dias com treino vs energia
+    const datasComTreino = new Set(dadosSessoes.map(s => s.data));
+    const regComTreino = dadosRegistos.filter(r => datasComTreino.has(r.data) && r.energia);
+    const regSemTreino = dadosRegistos.filter(r => !datasComTreino.has(r.data) && r.energia);
+
+    const mediaComTreino = regComTreino.length > 0
+        ? (regComTreino.reduce((s, r) => s + r.energia, 0) / regComTreino.length).toFixed(1) : '—';
+    const mediaSemTreino = regSemTreino.length > 0
+        ? (regSemTreino.reduce((s, r) => s + r.energia, 0) / regSemTreino.length).toFixed(1) : '—';
+
+    // Dias com flare vs energia
+    const regComFlare = dadosRegistos.filter(r => r.flare_fibromialgia && r.energia);
+    const mediaComFlare = regComFlare.length > 0
+        ? (regComFlare.reduce((s, r) => s + r.energia, 0) / regComFlare.length).toFixed(1) : '—';
+
+    // Sono vs energia
+    const comAmbos = dadosRegistos.filter(r => r.horas_sono && r.energia);
+    const boaSono = comAmbos.filter(r => parseFloat(r.horas_sono) >= 7);
+    const maSono = comAmbos.filter(r => parseFloat(r.horas_sono) < 6);
+    const mediaBoaSono = boaSono.length > 0
+        ? (boaSono.reduce((s, r) => s + r.energia, 0) / boaSono.length).toFixed(1) : '—';
+    const mediaMaSono = maSono.length > 0
+        ? (maSono.reduce((s, r) => s + r.energia, 0) / maSono.length).toFixed(1) : '—';
+
+    el.innerHTML = `
+        <div style="font-size:0.75rem; color:var(--cinza-meio); margin-bottom:10px;">Energia média (1–5) em diferentes condições</div>
+        <div class="corr-item">
+            <span>🏋️ Dias com treino</span>
+            <span class="corr-valor" style="color:var(--verde);">${mediaComTreino}/5</span>
+        </div>
+        <div class="corr-item">
+            <span>🛋️ Dias sem treino</span>
+            <span class="corr-valor">${mediaSemTreino}/5</span>
+        </div>
+        <div class="corr-item">
+            <span>😴 Sono ≥ 7h</span>
+            <span class="corr-valor" style="color:var(--verde);">${mediaBoaSono}/5</span>
+        </div>
+        <div class="corr-item">
+            <span>😵 Sono < 6h</span>
+            <span class="corr-valor" style="color:var(--laranja);">${mediaMaSono}/5</span>
+        </div>
+        ${regComFlare.length > 0 ? `
+        <div class="corr-item">
+            <span>🌪️ Dias com flare</span>
+            <span class="corr-valor" style="color:var(--laranja);">${mediaComFlare}/5</span>
+        </div>` : ''}`;
+}
+
+function renderFlaresStats() {
+    const el = document.getElementById('flares-stats');
+    const totalFlares = dadosRegistos.filter(r => r.flare_fibromialgia).length;
+    const totalDias = dadosRegistos.length;
+    const pct = totalDias > 0 ? Math.round((totalFlares / totalDias) * 100) : 0;
+
+    // Flares por dia da semana
+    const porDia = new Array(7).fill(0);
+    const diasNomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    for (const r of dadosRegistos.filter(r => r.flare_fibromialgia)) {
+        const d = new Date(r.data + 'T00:00:00');
+        porDia[d.getDay()]++;
+    }
+
+    el.innerHTML = `
+        <div style="display:flex; gap:12px; align-items:center; margin-bottom:14px;">
+            <div style="text-align:center;">
+                <div style="font-family:'DM Mono',monospace; font-size:2rem; font-weight:700; color:var(--laranja);">${totalFlares}</div>
+                <div style="font-size:0.72rem; color:var(--cinza-meio);">total de flares</div>
+            </div>
+            <div style="text-align:center;">
+                <div style="font-family:'DM Mono',monospace; font-size:2rem; font-weight:700; color:var(--azul-escuro);">${pct}%</div>
+                <div style="font-size:0.72rem; color:var(--cinza-meio);">dos dias registados</div>
+            </div>
+        </div>
+        ${totalFlares > 0 ? `
+        <div style="font-size:0.75rem; color:var(--cinza-meio); margin-bottom:8px;">Flares por dia da semana</div>
+        <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px;">
+            ${porDia.map((n, i) => `
+                <div style="text-align:center;">
+                    <div style="font-size:0.6rem; color:var(--cinza-meio); margin-bottom:3px;">${diasNomes[i]}</div>
+                    <div style="background:${n > 0 ? '#FEF3EE' : 'var(--cinza-claro)'}; color:${n > 0 ? 'var(--laranja)' : 'var(--cinza-meio)'}; border-radius:6px; padding:4px; font-family:'DM Mono',monospace; font-size:0.8rem; font-weight:${n > 0 ? '700' : '400'};">${n}</div>
+                </div>`).join('')}
+        </div>` : '<div style="color:var(--cinza-meio); font-size:0.9rem;">Sem flares no período selecionado. 🎉</div>'}`;
+}
+
+</script>
+</body>
+</html>

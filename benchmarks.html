@@ -133,10 +133,28 @@ function renderBenchmarks() {
     }
 
     el.innerHTML = Object.entries(grupos).map(([nome, registos]) => {
-        const melhor = registos[0]; // já ordenado por created_at desc, primeiro é mais recente
+        // Ordenar para encontrar o melhor resultado
+        const tipo = registos[0]?.tipo || 'outro';
+        const ordenados = [...registos].sort((a, b) => {
+            if (tipo === 'tempo') {
+                // Tempo: menos é melhor — converter para segundos
+                const toSecs = r => {
+                    const p = r.resultado.split(':');
+                    return p.length === 2 ? parseInt(p[0])*60 + parseInt(p[1]) : parseInt(r.resultado)*60;
+                };
+                return toSecs(a) - toSecs(b);
+            } else if (tipo === 'rondas' || tipo === 'peso') {
+                // Rondas/peso: mais é melhor
+                return parseFloat(b.resultado) - parseFloat(a.resultado);
+            }
+            return 0;
+        });
+        const melhor = ordenados[0]; // melhor resultado
+        // Histórico: restantes ordenados por data desc
+        const historico = [...registos].filter(r => r.id !== melhor.id).sort((a, b) => b.data?.localeCompare(a.data));
         const tipoIcon = { tempo: '⏱', rondas: '🔄', peso: '🏋️', outro: '📝' }[melhor.tipo || 'outro'] || '📝';
 
-        const historicoHTML = registos.length > 1 ? registos.slice(1).map(r => {
+        const historicoHTML = historico.length > 0 ? historico.map(r => {
             const data = new Date(r.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
             return `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--cinza-claro); font-size:0.8rem; color:var(--cinza-meio);">
@@ -156,8 +174,11 @@ function renderBenchmarks() {
                         <div style="font-size:0.75rem; color:var(--cinza-meio); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px;">
                             ${tipoIcon} ${nome}
                         </div>
-                        <div style="font-family:'DM Mono',monospace; font-size:1.8rem; font-weight:700; color:var(--verde); line-height:1;">
-                            ${melhor.resultado}
+                        <div style="display:flex; align-items:baseline; gap:8px;">
+                            <div style="font-family:'DM Mono',monospace; font-size:1.8rem; font-weight:700; color:var(--verde); line-height:1;">
+                                ${melhor.resultado}
+                            </div>
+                            <span style="font-size:0.7rem; background:var(--verde-claro); color:var(--verde); padding:2px 6px; border-radius:99px; font-weight:600;">🏆 Melhor</span>
                         </div>
                         <div style="font-size:0.75rem; color:var(--cinza-meio); margin-top:4px;">${dataFormatada}</div>
                         ${melhor.notas ? `<div style="font-size:0.78rem; color:var(--cinza-meio); margin-top:4px; font-style:italic;">${melhor.notas}</div>` : ''}
@@ -167,7 +188,7 @@ function renderBenchmarks() {
                         <button onclick="adicionarResultado('${nome}', '${melhor.tipo || 'outro'}')" style="background:var(--verde-claro); border:none; border-radius:var(--radius-sm); padding:6px 10px; cursor:pointer; font-size:0.8rem; color:var(--verde); font-weight:600;">+ Novo</button>
                     </div>
                 </div>
-                ${registos.length > 1 ? `
+                ${historico.length > 0 ? `
                 <div style="margin-top:8px;">
                     <div style="font-size:0.72rem; font-weight:600; color:var(--cinza-meio); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px;">Histórico</div>
                     ${historicoHTML}
