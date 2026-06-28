@@ -1,11 +1,25 @@
 {
     "name": "Treinos App",
     "short_name": "Treinos",
-    "description": "Acompanhamento de treinos e saúde pessoal",
-    "start_url": "/",
+    "description": "O teu diário de treino pessoal",
+    "start_url": "/treinos-app/",
+    "scope": "/treinos-app/",
     "display": "standalone",
     "background_color": "#F9FAFB",
     "theme_color": "#2A9D8F",
     "orientation": "portrait",
-    "icons": []
+    "icons": [
+        {
+            "src": "icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
 }

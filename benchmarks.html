@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Benchmarks</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232A9D8F'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
+</head>
+<body>
+
+<header class="header">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <a href="index.html" style="color:var(--cinza-meio); display:flex;">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <h1>Benchmarks</h1>
+    </div>
+    <button class="btn btn-primario" style="width:auto; padding:8px 14px; font-size:0.85rem;" onclick="abrirModal()">
+        + Novo
+    </button>
+</header>
+
+<div class="page active">
+
+    <div id="benchmarks-lista">
+        <div class="card" style="text-align:center; padding:32px;">
+            <div style="font-size:2rem; margin-bottom:8px;">🏆</div>
+            <div style="font-weight:600; color:var(--azul-escuro);">Sem benchmarks ainda</div>
+            <div style="font-size:0.85rem; color:var(--cinza-meio); margin-top:6px;">Regista os teus tempos e recordes pessoais.</div>
+            <button class="btn btn-primario" style="margin-top:16px;" onclick="abrirModal()">Adicionar benchmark</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-benchmark">
+    <div class="modal">
+        <div class="modal-titulo" id="modal-titulo">Novo benchmark</div>
+
+        <div class="form-grupo">
+            <label>Nome</label>
+            <input type="text" id="b-nome" placeholder="ex: Chipper, AMRAP, Fran...">
+        </div>
+        <div class="form-grupo">
+            <label>Resultado</label>
+            <input type="text" id="b-resultado" placeholder="ex: 9:02, 7 rondas, 45kg...">
+        </div>
+        <div class="form-grupo">
+            <label>Tipo</label>
+            <select id="b-tipo">
+                <option value="tempo">⏱ Tempo (menos = melhor)</option>
+                <option value="rondas">🔄 Rondas (mais = melhor)</option>
+                <option value="peso">🏋️ Peso (mais = melhor)</option>
+                <option value="outro">📝 Outro</option>
+            </select>
+        </div>
+        <div class="form-grupo">
+            <label>Data</label>
+            <input type="date" id="b-data">
+        </div>
+        <div class="form-grupo">
+            <label>Notas</label>
+            <textarea id="b-notas" placeholder="Contexto, condições, sensações..."></textarea>
+        </div>
+
+        <div style="display:flex; gap:8px;">
+            <button class="btn btn-secundario" style="flex:1;" onclick="fecharModal()">Cancelar</button>
+            <button class="btn btn-primario" style="flex:2;" id="btn-guardar" onclick="guardarBenchmark()">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+
+async function verificarAuth() {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) window.location.href = 'login.html';
+}
+verificarAuth();
+
+let benchmarks = [];
+let editandoId = null;
+
+function mostrarToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('b-data').value = new Date().toISOString().split('T')[0];
+    await carregarBenchmarks();
+});
+
+async function carregarBenchmarks() {
+    const { data } = await db
+        .from('benchmarks')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    benchmarks = data || [];
+    renderBenchmarks();
+}
+
+function renderBenchmarks() {
+    const el = document.getElementById('benchmarks-lista');
+    if (benchmarks.length === 0) {
+        el.innerHTML = `
+            <div class="card" style="text-align:center; padding:32px;">
+                <div style="font-size:2rem; margin-bottom:8px;">🏆</div>
+                <div style="font-weight:600; color:var(--azul-escuro);">Sem benchmarks ainda</div>
+                <div style="font-size:0.85rem; color:var(--cinza-meio); margin-top:6px;">Regista os teus tempos e recordes pessoais.</div>
+                <button class="btn btn-primario" style="margin-top:16px;" onclick="abrirModal()">Adicionar benchmark</button>
+            </div>`;
+        return;
+    }
+
+    // Agrupar por nome
+    const grupos = {};
+    for (const b of benchmarks) {
+        if (!grupos[b.nome]) grupos[b.nome] = [];
+        grupos[b.nome].push(b);
+    }
+
+    el.innerHTML = Object.entries(grupos).map(([nome, registos]) => {
+        const melhor = registos[0]; // já ordenado por created_at desc, primeiro é mais recente
+        const tipoIcon = { tempo: '⏱', rondas: '🔄', peso: '🏋️', outro: '📝' }[melhor.tipo || 'outro'] || '📝';
+
+        const historicoHTML = registos.length > 1 ? registos.slice(1).map(r => {
+            const data = new Date(r.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short', year: 'numeric' });
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--cinza-claro); font-size:0.8rem; color:var(--cinza-meio);">
+                    <span>${data}</span>
+                    <span style="font-family:'DM Mono',monospace;">${r.resultado}</span>
+                </div>`;
+        }).join('') : '';
+
+        const dataFormatada = melhor.data
+            ? new Date(melhor.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })
+            : '';
+
+        return `
+            <div class="card" style="margin-bottom:12px;">
+                <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px;">
+                    <div>
+                        <div style="font-size:0.75rem; color:var(--cinza-meio); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px;">
+                            ${tipoIcon} ${nome}
+                        </div>
+                        <div style="font-family:'DM Mono',monospace; font-size:1.8rem; font-weight:700; color:var(--verde); line-height:1;">
+                            ${melhor.resultado}
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--cinza-meio); margin-top:4px;">${dataFormatada}</div>
+                        ${melhor.notas ? `<div style="font-size:0.78rem; color:var(--cinza-meio); margin-top:4px; font-style:italic;">${melhor.notas}</div>` : ''}
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <button onclick="editarBenchmark('${melhor.id}')" style="background:var(--cinza-claro); border:none; border-radius:var(--radius-sm); padding:6px 10px; cursor:pointer; font-size:0.8rem;">✏️</button>
+                        <button onclick="adicionarResultado('${nome}', '${melhor.tipo || 'outro'}')" style="background:var(--verde-claro); border:none; border-radius:var(--radius-sm); padding:6px 10px; cursor:pointer; font-size:0.8rem; color:var(--verde); font-weight:600;">+ Novo</button>
+                    </div>
+                </div>
+                ${registos.length > 1 ? `
+                <div style="margin-top:8px;">
+                    <div style="font-size:0.72rem; font-weight:600; color:var(--cinza-meio); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px;">Histórico</div>
+                    ${historicoHTML}
+                </div>` : ''}
+            </div>`;
+    }).join('');
+}
+
+// ---- MODAL ----
+function abrirModal(nome = '', tipo = 'tempo') {
+    editandoId = null;
+    document.getElementById('modal-titulo').textContent = 'Novo benchmark';
+    document.getElementById('btn-guardar').textContent = 'Guardar';
+    document.getElementById('b-nome').value = nome;
+    document.getElementById('b-tipo').value = tipo;
+    document.getElementById('b-resultado').value = '';
+    document.getElementById('b-notas').value = '';
+    document.getElementById('b-data').value = new Date().toISOString().split('T')[0];
+    document.getElementById('modal-benchmark').classList.add('open');
+    if (!nome) document.getElementById('b-nome').focus();
+    else document.getElementById('b-resultado').focus();
+}
+
+function adicionarResultado(nome, tipo) {
+    abrirModal(nome, tipo);
+}
+
+function editarBenchmark(id) {
+    const b = benchmarks.find(x => x.id === id);
+    if (!b) return;
+    editandoId = id;
+    document.getElementById('modal-titulo').textContent = 'Editar benchmark';
+    document.getElementById('btn-guardar').textContent = 'Atualizar';
+    document.getElementById('b-nome').value = b.nome;
+    document.getElementById('b-tipo').value = b.tipo || 'outro';
+    document.getElementById('b-resultado').value = b.resultado;
+    document.getElementById('b-notas').value = b.notas || '';
+    document.getElementById('b-data').value = b.data || new Date().toISOString().split('T')[0];
+    document.getElementById('modal-benchmark').classList.add('open');
+}
+
+function fecharModal() {
+    document.getElementById('modal-benchmark').classList.remove('open');
+    editandoId = null;
+}
+
+document.getElementById('modal-benchmark').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-benchmark')) fecharModal();
+});
+
+async function guardarBenchmark() {
+    const nome = document.getElementById('b-nome').value.trim();
+    const resultado = document.getElementById('b-resultado').value.trim();
+    if (!nome || !resultado) { mostrarToast('Preenche o nome e o resultado'); return; }
+
+    const payload = {
+        nome,
+        resultado,
+        tipo: document.getElementById('b-tipo').value,
+        data: document.getElementById('b-data').value || null,
+        notas: document.getElementById('b-notas').value.trim() || null
+    };
+
+    let error;
+    if (editandoId) {
+        ({ error } = await db.from('benchmarks').update(payload).eq('id', editandoId));
+    } else {
+        ({ error } = await db.from('benchmarks').insert(payload));
+    }
+
+    if (error) { mostrarToast('Erro ao guardar 😕'); return; }
+    mostrarToast(editandoId ? 'Atualizado ✓' : 'Benchmark guardado ✓');
+    fecharModal();
+    await carregarBenchmarks();
+}
+
+</script>
+</body>
+</html>
