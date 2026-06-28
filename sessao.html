@@ -385,10 +385,14 @@ verificarAuth();
 let planoMD = '';
 let blocosData = [];
 let exerciciosFeitos = new Set();
+let exerciciosAnteriores = {}; // { nome_lower: { peso_kg, reps } }
 let cronometroInterval = null;
 let cronometroSegundos = 0;
 let cronometroAtivo = false;
 let rondasWOD = 0;
+let counterExInterval = null;
+let counterExSegundos = 0;
+let counterExAtivo = false;
 
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', async () => {
@@ -619,14 +623,37 @@ ${s.sugestoes_claude}
     planoEl.appendChild(resumoDiv);
 }
 
-function mostrarCampoSugestoes(s) {
+async function mostrarCampoSugestoes(s) {
     const planoEl = document.getElementById('plano-conteudo');
     const div = document.createElement('div');
     div.className = 'card';
+
+    // Buscar sugestões da sessão anterior do mesmo treino
+    let sugestoesAnteriores = '';
+    try {
+        const { data } = await db
+            .from('sessoes_treino')
+            .select('sugestoes_claude, data')
+            .ilike('nome_treino', `%${s.nome_treino.split(' ')[0]}%`)
+            .neq('id', s.id)
+            .not('sugestoes_claude', 'is', null)
+            .order('data', { ascending: false })
+            .limit(1);
+        if (data && data.length > 0 && data[0].sugestoes_claude) {
+            sugestoesAnteriores = data[0].sugestoes_claude;
+        }
+    } catch(e) {}
+
+    // Se a sessão atual já tem sugestões, mostrar essas; senão pré-preencher com as anteriores
+    const valorInicial = s.sugestoes_claude || sugestoesAnteriores || '';
+    const labelAnterior = !s.sugestoes_claude && sugestoesAnteriores
+        ? '<span style="color:var(--laranja); font-size:0.72rem; font-weight:600;">↩ pré-preenchido com sessão anterior</span>'
+        : '';
+
     div.innerHTML = `
-        <div class="card-titulo">💡 Sugestões do Claude</div>
-        <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:10px;">Cola aqui o feedback que o Claude te deu sobre esta sessão.</p>
-        <textarea id="sugestoes-input" placeholder="Cola aqui as sugestões do Claude..." style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Sans',sans-serif; font-size:0.85rem; resize:vertical; min-height:120px; outline:none;">${s.sugestoes_claude || ''}</textarea>
+        <div class="card-titulo">💡 Sugestões do Claude ${labelAnterior}</div>
+        <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:10px;">Cola ou edita aqui o feedback do Claude para esta sessão.</p>
+        <textarea id="sugestoes-input" placeholder="Cola aqui as sugestões do Claude..." style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Sans',sans-serif; font-size:0.85rem; resize:vertical; min-height:120px; outline:none;">${valorInicial}</textarea>
         <button class="btn btn-primario" style="margin-top:8px;" onclick="guardarSugestoes('${s.id}')">
             Guardar sugestões
         </button>`;
@@ -712,6 +739,7 @@ function parsearMD(md) {
                 titulo: linha.replace('## ', '').replace(/[🔴🔵🟡🟢⚙️]/g, '').trim(),
                 subtitulo: '',
                 tipo: 'normal',
+                rondas: null,
                 exercicios: [],
                 avisos: [],
                 texto: []
@@ -733,7 +761,11 @@ function parsearMD(md) {
 
         // Subtítulo (bold lines com ** ** no início)
         if (linha.startsWith('**') && linha.endsWith('**') && !linha.includes('|')) {
-            blocoAtual.subtitulo += linha.replace(/\*\*/g, '') + ' ';
+            const subLinha = linha.replace(/\*\*/g, '');
+            blocoAtual.subtitulo += subLinha + ' ';
+            // Extrair rondas do subtítulo: "4 rondas", "3 rounds", "Formato: 4 rondas"
+            const rondasMatch = subLinha.match(/(\d+)\s*ronda/i) || subLinha.match(/(\d+)\s*round/i);
+            if (rondasMatch) blocoAtual.rondas = parseInt(rondasMatch[1]);
             continue;
         }
 
@@ -814,6 +846,9 @@ async function iniciarTreino() {
         <div class="meta">${new Date(data + 'T00:00:00').toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
     `;
 
+    // Carregar exercícios da sessão anterior para pré-preencher
+    await carregarExerciciosAnteriores(nome);
+
     // Comparação com sessão anterior
     await mostrarComparacao(nome);
 
@@ -824,6 +859,27 @@ async function iniciarTreino() {
     } else {
         renderizarSemPlano();
     }
+}
+
+async function carregarExerciciosAnteriores(nome) {
+    try {
+        const { data } = await db
+            .from('sessoes_treino')
+            .select('*, exercicios_sessao(*)')
+            .ilike('nome_treino', `%${nome.split(' ')[0]}%`)
+            .order('data', { ascending: false })
+            .limit(1);
+
+        if (data && data.length > 0 && data[0].exercicios_sessao) {
+            exerciciosAnteriores = {};
+            for (const ex of data[0].exercicios_sessao) {
+                exerciciosAnteriores[ex.nome.toLowerCase()] = {
+                    peso_kg: ex.peso_kg,
+                    reps: ex.reps
+                };
+            }
+        }
+    } catch(e) {}
 }
 
 async function mostrarComparacao(nome) {
@@ -870,17 +926,19 @@ function renderizarPlano() {
         const badgeClass = isWOD ? 'laranja' : isWarmup ? 'cinza' : '';
         const badgeText = isWOD ? 'WOD' : isWarmup ? 'Warm-up' : 'Bloco';
 
+        const rondasInfo = bloco.rondas ? ` · ${bloco.rondas} rondas` : '';
         div.innerHTML = `
             <div class="bloco-header" onclick="toggleBloco(${bi})">
                 <div class="bloco-header-info">
                     <div class="bloco-titulo">${bloco.titulo}</div>
                     ${bloco.subtitulo ? `<div class="bloco-sub">${bloco.subtitulo.trim()}</div>` : ''}
                 </div>
-                <span class="bloco-badge ${badgeClass}">${badgeText}</span>
+                <span class="bloco-badge ${badgeClass}">${badgeText}${rondasInfo}</span>
             </div>
             <div class="bloco-corpo" id="bloco-corpo-${bi}">
                 ${bloco.avisos.map(a => `<div class="warn-box">${a}</div>`).join('')}
                 ${isWOD ? renderCronometro() : ''}
+                ${bloco.rondas && !isWOD ? renderCounterRondas(bi, bloco.rondas) : ''}
                 ${bloco.exercicios.map((ex, ei) => renderExercicio(bi, ei, ex)).join('')}
             </div>`;
 
@@ -890,13 +948,150 @@ function renderizarPlano() {
     atualizarProgresso();
 }
 
+function renderCounterRondas(bi, totalRondas) {
+    return `
+        <div id="counter-rondas-${bi}" style="background:var(--azul-escuro); border-radius:var(--radius-sm); padding:12px 16px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+            <span style="color:rgba(255,255,255,0.7); font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em;">Ronda</span>
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button onclick="ajustarRondaBloco(${bi}, -1)" style="width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,0.3); background:none; color:white; font-size:1.2rem; cursor:pointer;">−</button>
+                <span id="ronda-atual-${bi}" style="font-family:'DM Mono',monospace; font-size:1.5rem; font-weight:700; color:white; min-width:60px; text-align:center;">1 / ${totalRondas}</span>
+                <button onclick="ajustarRondaBloco(${bi}, 1)" style="width:32px; height:32px; border-radius:50%; border:2px solid rgba(255,255,255,0.3); background:none; color:white; font-size:1.2rem; cursor:pointer;">+</button>
+            </div>
+            <span style="color:rgba(255,255,255,0.5); font-size:0.75rem;">${totalRondas} total</span>
+        </div>`;
+}
+
+let rondasBloco = {}; // { bi: rondaAtual }
+
+function ajustarRondaBloco(bi, delta) {
+    const bloco = blocosData[bi];
+    if (!bloco) return;
+    const total = bloco.rondas || 1;
+    if (!rondasBloco[bi]) rondasBloco[bi] = 1;
+    rondasBloco[bi] = Math.max(1, Math.min(total, rondasBloco[bi] + delta));
+    document.getElementById(`ronda-atual-${bi}`).textContent = `${rondasBloco[bi]} / ${total}`;
+}
+
+// Counter por exercício (modal)
+function abrirCounterEx(id, nome, repsPlano) {
+    // Detectar se é tempo ou reps
+    const eTempo = repsPlano.includes('seg') || repsPlano.includes('min') || repsPlano.includes('sec');
+    const numMatch = repsPlano.match(/\d+/);
+    const numVal = numMatch ? parseInt(numMatch[0]) : 10;
+
+    // Criar modal de counter
+    let modal = document.getElementById('modal-counter-ex');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modal-counter-ex';
+        modal.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:300; display:flex; align-items:center; justify-content:center; flex-direction:column;';
+        document.body.appendChild(modal);
+    }
+
+    let segundos = eTempo ? numVal : 0;
+    let intervalo = null;
+    let ativo = false;
+
+    modal.innerHTML = `
+        <div style="text-align:center; color:white; padding:20px;">
+            <div style="font-size:0.85rem; opacity:0.7; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.1em;">${nome}</div>
+            <div style="font-size:0.8rem; opacity:0.5; margin-bottom:20px;">${repsPlano || ''}</div>
+            <div id="counter-display" style="font-family:'DM Mono',monospace; font-size:5rem; font-weight:700; line-height:1; margin-bottom:24px;">${eTempo ? numVal : 0}</div>
+            <div style="display:flex; gap:12px; justify-content:center; margin-bottom:20px;">
+                ${!eTempo ? `
+                <button onclick="ajustarCounter(-1)" style="width:56px; height:56px; border-radius:50%; border:2px solid rgba(255,255,255,0.3); background:none; color:white; font-size:1.5rem; cursor:pointer;">−</button>
+                ` : ''}
+                <button id="btn-counter" onclick="toggleCounter(${eTempo}, ${numVal})" style="width:80px; height:80px; border-radius:50%; background:var(--verde); border:none; color:white; font-size:1.5rem; cursor:pointer;">▶</button>
+                ${!eTempo ? `
+                <button onclick="ajustarCounter(1)" style="width:56px; height:56px; border-radius:50%; border:2px solid rgba(255,255,255,0.3); background:none; color:white; font-size:1.5rem; cursor:pointer;">+</button>
+                ` : ''}
+            </div>
+            <button onclick="fecharCounterEx('${id}')" style="background:rgba(255,255,255,0.15); border:none; color:white; padding:12px 28px; border-radius:99px; font-family:'DM Sans',sans-serif; font-size:0.9rem; cursor:pointer;">✓ Feito</button>
+            <button onclick="cancelarCounterEx()" style="background:none; border:none; color:rgba(255,255,255,0.4); padding:12px 16px; font-family:'DM Sans',sans-serif; font-size:0.85rem; cursor:pointer; display:block; margin:8px auto 0;">Cancelar</button>
+        </div>`;
+
+    // Guardar estado
+    modal._segundos = segundos;
+    modal._eTempo = eTempo;
+    modal._numVal = numVal;
+    modal._intervalo = null;
+    modal._ativo = false;
+
+    modal.style.display = 'flex';
+}
+
+function ajustarCounter(delta) {
+    const modal = document.getElementById('modal-counter-ex');
+    if (!modal) return;
+    modal._segundos = Math.max(0, modal._segundos + delta);
+    document.getElementById('counter-display').textContent = modal._segundos;
+}
+
+function toggleCounter(eTempo, numVal) {
+    const modal = document.getElementById('modal-counter-ex');
+    const btn = document.getElementById('btn-counter');
+    if (!modal) return;
+
+    if (modal._ativo) {
+        clearInterval(modal._intervalo);
+        modal._ativo = false;
+        btn.textContent = '▶';
+        btn.style.background = 'var(--verde)';
+    } else {
+        modal._ativo = true;
+        btn.textContent = '⏸';
+        btn.style.background = 'var(--laranja)';
+        modal._intervalo = setInterval(() => {
+            if (eTempo) {
+                modal._segundos = Math.max(0, modal._segundos - 1);
+                if (modal._segundos === 0) {
+                    clearInterval(modal._intervalo);
+                    modal._ativo = false;
+                    btn.textContent = '▶';
+                    btn.style.background = 'var(--verde)';
+                    // Vibrar se disponível
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                }
+            } else {
+                modal._segundos++;
+            }
+            document.getElementById('counter-display').textContent = modal._segundos;
+        }, 1000);
+    }
+}
+
+function fecharCounterEx(exId) {
+    const modal = document.getElementById('modal-counter-ex');
+    if (modal) {
+        clearInterval(modal._intervalo);
+        modal.style.display = 'none';
+    }
+    // Marcar exercício como feito
+    toggleFeito(exId, parseInt(exId.split('-')[1]), parseInt(exId.split('-')[2]));
+}
+
+function cancelarCounterEx() {
+    const modal = document.getElementById('modal-counter-ex');
+    if (modal) {
+        clearInterval(modal._intervalo);
+        modal.style.display = 'none';
+    }
+}
+
 function renderExercicio(bi, ei, ex) {
     const id = `ex-${bi}-${ei}`;
+    // Pré-preencher com valores da sessão anterior
+    const anterior = exerciciosAnteriores[ex.nome.toLowerCase()] || {};
+    const pesoValor = anterior.peso_kg ? anterior.peso_kg : (ex.peso_plano ? ex.peso_plano.replace('kg','') : '');
+    const repsValor = anterior.reps || ex.reps || '';
+
     return `
         <div class="exercicio-item" id="${id}">
             <div class="exercicio-nome-row">
                 <div class="exercicio-check" id="check-${id}" onclick="toggleFeito('${id}', ${bi}, ${ei})"></div>
                 <div class="exercicio-nome">${ex.nome}</div>
+                <button onclick="abrirCounterEx('${id}', '${ex.nome.replace(/'/g,"\'")}', '${ex.reps || ''}')" 
+                    style="background:none; border:none; cursor:pointer; color:var(--verde); font-size:1.1rem; padding:4px;" title="Contador">⏱</button>
             </div>
             ${(ex.reps || ex.peso_plano) ? `
             <div class="exercicio-plan">
@@ -906,13 +1101,13 @@ function renderExercicio(bi, ei, ex) {
             </div>` : ''}
             <div class="exercicio-registo">
                 <div class="registo-campo">
-                    <label>Peso usado</label>
-                    <input type="text" id="peso-${id}" placeholder="${ex.peso_plano || 'kg'}" 
+                    <label>Peso usado${anterior.peso_kg ? ' <span style="color:var(--verde);font-size:0.65rem;">↩ anterior</span>' : ''}</label>
+                    <input type="text" id="peso-${id}" value="${pesoValor}" placeholder="${ex.peso_plano || 'kg'}" 
                         oninput="autoFeito('${id}')">
                 </div>
                 <div class="registo-campo">
-                    <label>Reps / Séries</label>
-                    <input type="text" id="reps-${id}" placeholder="${ex.reps || 'reps'}"
+                    <label>Reps / Séries${anterior.reps ? ' <span style="color:var(--verde);font-size:0.65rem;">↩ anterior</span>' : ''}</label>
+                    <input type="text" id="reps-${id}" value="${repsValor}" placeholder="${ex.reps || 'reps'}"
                         oninput="autoFeito('${id}')">
                 </div>
             </div>
