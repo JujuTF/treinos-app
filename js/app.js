@@ -239,12 +239,30 @@ async function carregarTreinoHoje() {
     if (!container) return;
 
     try {
-        const { data } = await db
-            .from('sessoes_treino')
-            .select('*, exercicios_sessao(*)')
-            .eq('data', hoje())
-            .order('created_at', { ascending: false })
-            .limit(1);
+        // Tentar usar o ID da última sessão guardada (mais fiável logo após guardar)
+        let data = null;
+        const ultimaId = sessionStorage.getItem('ultima_sessao_id');
+        if (ultimaId) {
+            const { data: sessaoDirecta } = await db
+                .from('sessoes_treino')
+                .select('*, exercicios_sessao(*)')
+                .eq('id', ultimaId)
+                .eq('data', hoje())
+                .limit(1);
+            if (sessaoDirecta && sessaoDirecta.length > 0) {
+                data = sessaoDirecta;
+            }
+        }
+
+        if (!data) {
+            const { data: sessoes } = await db
+                .from('sessoes_treino')
+                .select('*, exercicios_sessao(*)')
+                .eq('data', hoje())
+                .order('created_at', { ascending: false })
+                .limit(1);
+            data = sessoes;
+        }
 
         if (data && data.length > 0) {
             const s = data[0];

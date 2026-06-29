@@ -855,6 +855,12 @@ async function iniciarTreino() {
     // Comparação com sessão anterior
     await mostrarComparacao(nome);
 
+    // Restaurar autosave se existir
+    const temAutosave = restaurarAutosave();
+    if (temAutosave) {
+        mostrarToast('Treino restaurado ✓');
+    }
+
     // Parsear e renderizar plano
     if (planoMD) {
         blocosData = parsearMD(planoMD);
@@ -1393,7 +1399,10 @@ async function guardarSessaoCompleta() {
     // Atualizar benchmark automaticamente
     const benchmarkMsg = await atualizarBenchmarkAutomatico(nome, payload.tempo_wod, payload.rounds_completos, data);
 
+    limparAutosave();
     mostrarToast(benchmarkMsg ? `Sessão guardada · ${benchmarkMsg}` : 'Sessão guardada ✓');
+    // Guardar ID da sessão para o dashboard mostrar o detalhe correto
+    try { sessionStorage.setItem('ultima_sessao_id', sessao.id); } catch(e) {}
     setTimeout(() => window.location.href = 'index.html', 1800);
 }
 
