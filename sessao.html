@@ -361,7 +361,7 @@
                 style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Sans',sans-serif; font-size:0.9rem; resize:vertical; min-height:80px; outline:none;"></textarea>
         </div>
 
-        <div id="botoes-treino-ativo" style="display:flex; gap:10px; margin-bottom:20px;">
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
             <button class="btn btn-secundario" style="flex:1;" onclick="guardarProgresso()">
                 💾 Guardar progresso
             </button>
@@ -460,10 +460,6 @@ async function verDetalhesSessao(id) {
     const planoEl = document.getElementById('plano-conteudo');
     const guardarBtn = document.querySelector('button[onclick="guardarSessaoCompleta()"]');
     if (guardarBtn) guardarBtn.style.display = 'none';
-
-    // Esconder botões de treino ativo — sessão já terminada
-    const botoesAtivo = document.getElementById('botoes-treino-ativo');
-    if (botoesAtivo) botoesAtivo.style.display = 'none';
 
     if (exs.length > 0) {
         planoEl.innerHTML = `
@@ -828,8 +824,9 @@ function parsearMD(md) {
                         feito: false
                     };
 
-                    // Usar peso do bloco se disponível
+                    // peso_plano como sugestão do plano (placeholder apenas)
                     if (blocoAtual.peso_bloco) ex.peso_plano = blocoAtual.peso_bloco;
+                    // Não herdar peso automaticamente — utilizador preenche
 
                     if (ex.nome && ex.nome.length > 1) {
                         blocoAtual.exercicios.push(ex);
@@ -1114,7 +1111,8 @@ function renderExercicio(bi, ei, ex, ronda) {
     // ronda=0 significa sem rondas; ronda>=1 significa ronda específica
     const id = ronda > 0 ? `ex-${bi}-${ei}-r${ronda}` : `ex-${bi}-${ei}`;
     const anterior = exerciciosAnteriores[ex.nome.toLowerCase()] || {};
-    const pesoValor = anterior.peso_kg ? anterior.peso_kg : (ex.peso_plano ? ex.peso_plano.replace('kg','') : '');
+    // Pré-preencher só com peso da sessão anterior (não do plano)
+    const pesoValor = anterior.peso_kg ? anterior.peso_kg : '';
     const repsValor = ronda > 0 ? (ex.reps || '') : (anterior.reps || ex.reps || '');
 
     return `

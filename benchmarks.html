@@ -26,11 +26,14 @@
 
 <div class="page active">
 
-    <div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--cinza-meio); margin-bottom:8px; margin-top:4px;">⏱ WODs &amp; Recordes</div>
-    <div id="benchmarks-lista"></div>
-    <div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--cinza-meio); margin-bottom:8px; margin-top:16px;">💪 Evolução por exercício</div>
-    <div id="exercicios-evolucao"><div class="card" style="text-align:center; padding:20px; color:var(--cinza-meio); font-size:0.9rem;">A carregar...</div></div>
-
+    <div id="benchmarks-lista">
+        <div class="card" style="text-align:center; padding:32px;">
+            <div style="font-size:2rem; margin-bottom:8px;">🏆</div>
+            <div style="font-weight:600; color:var(--azul-escuro);">Sem benchmarks ainda</div>
+            <div style="font-size:0.85rem; color:var(--cinza-meio); margin-top:6px;">Regista os teus tempos e recordes pessoais.</div>
+            <button class="btn btn-primario" style="margin-top:16px;" onclick="abrirModal()">Adicionar benchmark</button>
+        </div>
+    </div>
 
 </div>
 
@@ -97,7 +100,6 @@ function mostrarToast(msg) {
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('b-data').value = new Date().toISOString().split('T')[0];
     await carregarBenchmarks();
-    await carregarExerciciosEvolucao();
 });
 
 async function carregarBenchmarks() {
@@ -261,94 +263,6 @@ async function guardarBenchmark() {
     mostrarToast(editandoId ? 'Atualizado ✓' : 'Benchmark guardado ✓');
     fecharModal();
     await carregarBenchmarks();
-}
-
-
-async function carregarExerciciosEvolucao() {
-    const el = document.getElementById('exercicios-evolucao');
-    if (!el) return;
-
-    const { data: sessoes } = await db
-        .from('sessoes_treino')
-        .select('id, data, nome_treino, exercicios_sessao(nome, peso_kg, reps)')
-        .order('data', { ascending: false })
-        .limit(50);
-
-    if (!sessoes || sessoes.length === 0) {
-        el.innerHTML = '<div class="card" style="text-align:center; padding:20px; color:var(--cinza-meio); font-size:0.9rem;">Sem sessoes registadas ainda.</div>';
-        return;
-    }
-
-    const porExercicio = {};
-    for (const sessao of sessoes) {
-        if (!sessao.exercicios_sessao) continue;
-        for (const ex of sessao.exercicios_sessao) {
-            if (!ex.peso_kg) continue; // So mostrar exercicios com peso
-            const nomeBase = ex.nome.replace(/\s*\(R\d+\)\s*/g, '').trim();
-            if (!nomeBase) continue;
-            if (!porExercicio[nomeBase]) porExercicio[nomeBase] = [];
-            const jaExiste = porExercicio[nomeBase].some(e => e.sessao_id === sessao.id);
-            if (!jaExiste) {
-                porExercicio[nomeBase].push({
-                    sessao_id: sessao.id,
-                    data: sessao.data,
-                    peso_kg: ex.peso_kg,
-                    reps: ex.reps
-                });
-            }
-        }
-    }
-
-    const comHistorico = Object.entries(porExercicio)
-        .filter(function(entry) { return entry[1].length >= 1; })
-        .sort(function(a, b) { return a[0].localeCompare(b[0]); });
-
-    if (comHistorico.length === 0) {
-        el.innerHTML = '<div class="card" style="text-align:center; padding:20px; color:var(--cinza-meio); font-size:0.9rem;">Regista pesos nas sessoes para ver a evolucao aqui.</div>';
-        return;
-    }
-
-    var html = '';
-    comHistorico.forEach(function(entry) {
-        var nome = entry[0];
-        var registos = entry[1];
-        var ordenados = registos.slice().sort(function(a, b) { return b.data.localeCompare(a.data); });
-        var ultimo = ordenados[0];
-        var anterior = ordenados[1];
-
-        var diffHTML = '';
-        if (anterior && ultimo.peso_kg && anterior.peso_kg) {
-            var diff = (ultimo.peso_kg - anterior.peso_kg).toFixed(1);
-            if (parseFloat(diff) > 0) {
-                diffHTML = '<span style="font-size:0.72rem; background:#DCFCE7; color:#16A34A; padding:2px 8px; border-radius:99px; font-weight:600; margin-left:6px;">+' + diff + 'kg</span>';
-            } else if (parseFloat(diff) < 0) {
-                diffHTML = '<span style="font-size:0.72rem; background:#FEE2E2; color:#DC2626; padding:2px 8px; border-radius:99px; font-weight:600; margin-left:6px;">' + diff + 'kg</span>';
-            }
-        }
-
-        var historicoHTML = '';
-        ordenados.slice(0, 4).forEach(function(r, i) {
-            var dataStr = new Date(r.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
-            var val = r.peso_kg + ' kg' + (r.reps ? ' x ' + r.reps : '');
-            historicoHTML += '<div style="display:flex; justify-content:space-between; padding:5px 0; border-top:1px solid var(--cinza-claro); font-size:0.78rem;">'
-                + '<span style="color:var(--cinza-meio);">' + dataStr + '</span>'
-                + '<span style="font-family:monospace; font-weight:600; color:' + (i === 0 ? 'var(--verde)' : 'var(--cinza-texto)') + ';">' + val + '</span>'
-                + '</div>';
-        });
-
-        html += '<div class="card" style="margin-bottom:10px;">'
-            + '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">'
-            + '<div style="font-size:0.8rem; font-weight:700; color:var(--azul-escuro);">' + nome + '</div>'
-            + '<div style="display:flex; align-items:baseline; gap:4px;">'
-            + '<span style="font-family:monospace; font-size:1.3rem; font-weight:700; color:var(--verde);">' + ultimo.peso_kg + ' kg</span>'
-            + diffHTML
-            + '</div>'
-            + '</div>'
-            + historicoHTML
-            + '</div>';
-    });
-
-    el.innerHTML = html;
 }
 
 </script>
