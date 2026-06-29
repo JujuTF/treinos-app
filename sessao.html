@@ -1406,7 +1406,10 @@ async function guardarSessaoCompleta(mostrarResumo = false) {
     }
 
     // Atualizar benchmark automaticamente
-    const benchmarkMsg = await atualizarBenchmarkAutomatico(nome, payload.tempo_wod, payload.rounds_completos, data);
+    // Usar nome do bloco WOD se existir, senão nome do treino
+    const blocoWOD = blocosData.find(b => b.tipo === 'wod');
+    const nomeWOD = blocoWOD ? blocoWOD.titulo : nome;
+    const benchmarkMsg = await atualizarBenchmarkAutomatico(nomeWOD, payload.tempo_wod, payload.rounds_completos, data);
 
     mostrarToast(benchmarkMsg ? `Sessão guardada · ${benchmarkMsg}` : 'Sessão guardada ✓');
     setTimeout(() => window.location.href = 'index.html', 1800);
