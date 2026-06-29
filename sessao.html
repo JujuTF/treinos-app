@@ -361,7 +361,7 @@
                 style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Sans',sans-serif; font-size:0.9rem; resize:vertical; min-height:80px; outline:none;"></textarea>
         </div>
 
-        <div style="display:flex; gap:10px; margin-bottom:20px;">
+        <div id="botoes-treino-ativo" style="display:flex; gap:10px; margin-bottom:20px;">
             <button class="btn btn-secundario" style="flex:1;" onclick="guardarProgresso()">
                 💾 Guardar progresso
             </button>
@@ -460,6 +460,10 @@ async function verDetalhesSessao(id) {
     const planoEl = document.getElementById('plano-conteudo');
     const guardarBtn = document.querySelector('button[onclick="guardarSessaoCompleta()"]');
     if (guardarBtn) guardarBtn.style.display = 'none';
+
+    // Esconder botões de treino ativo — sessão já terminada
+    const botoesAtivo = document.getElementById('botoes-treino-ativo');
+    if (botoesAtivo) botoesAtivo.style.display = 'none';
 
     if (exs.length > 0) {
         planoEl.innerHTML = `
@@ -1406,10 +1410,7 @@ async function guardarSessaoCompleta(mostrarResumo = false) {
     }
 
     // Atualizar benchmark automaticamente
-    // Usar nome do bloco WOD se existir, senão nome do treino
-    const blocoWOD = blocosData.find(b => b.tipo === 'wod');
-    const nomeWOD = blocoWOD ? blocoWOD.titulo : nome;
-    const benchmarkMsg = await atualizarBenchmarkAutomatico(nomeWOD, payload.tempo_wod, payload.rounds_completos, data);
+    const benchmarkMsg = await atualizarBenchmarkAutomatico(nome, payload.tempo_wod, payload.rounds_completos, data);
 
     mostrarToast(benchmarkMsg ? `Sessão guardada · ${benchmarkMsg}` : 'Sessão guardada ✓');
     setTimeout(() => window.location.href = 'index.html', 1800);

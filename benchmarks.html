@@ -26,22 +26,11 @@
 
 <div class="page active">
 
-    <!-- Secção WODs -->
-    <div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--cinza-meio); margin-bottom:8px; margin-top:4px;">⏱ WODs & Recordes</div>
+    <div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--cinza-meio); margin-bottom:8px; margin-top:4px;">⏱ WODs &amp; Recordes</div>
     <div id="benchmarks-lista"></div>
-
-    <!-- Secção Evolução por Exercício -->
     <div style="font-size:0.75rem; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--cinza-meio); margin-bottom:8px; margin-top:16px;">💪 Evolução por exercício</div>
-    <div id="exercicios-evolucao">
-        <div class="card" style="text-align:center; padding:20px; color:var(--cinza-meio); font-size:0.9rem;">A carregar...</div>
-    </div>
-        <div class="card" style="text-align:center; padding:32px;">
-            <div style="font-size:2rem; margin-bottom:8px;">🏆</div>
-            <div style="font-weight:600; color:var(--azul-escuro);">Sem benchmarks ainda</div>
-            <div style="font-size:0.85rem; color:var(--cinza-meio); margin-top:6px;">Regista os teus tempos e recordes pessoais.</div>
-            <button class="btn btn-primario" style="margin-top:16px;" onclick="abrirModal()">Adicionar benchmark</button>
-        </div>
-    </div>
+    <div id="exercicios-evolucao"><div class="card" style="text-align:center; padding:20px; color:var(--cinza-meio); font-size:0.9rem;">A carregar...</div></div>
+
 
 </div>
 
@@ -274,32 +263,30 @@ async function guardarBenchmark() {
     await carregarBenchmarks();
 }
 
+
 async function carregarExerciciosEvolucao() {
     const el = document.getElementById('exercicios-evolucao');
     if (!el) return;
 
-    // Buscar todas as sessões com exercícios
     const { data: sessoes } = await db
         .from('sessoes_treino')
         .select('id, data, nome_treino, exercicios_sessao(nome, peso_kg, reps)')
         .order('data', { ascending: false })
-        .limit(30);
+        .limit(50);
 
     if (!sessoes || sessoes.length === 0) {
-        el.innerHTML = '<div class="card" style="text-align:center; padding:20px; color:var(--cinza-meio); font-size:0.9rem;">Sem sessões registadas ainda.</div>';
+        el.innerHTML = '<div class="card" style="text-align:center; padding:20px; color:var(--cinza-meio); font-size:0.9rem;">Sem sessoes registadas ainda.</div>';
         return;
     }
 
-    // Agrupar exercícios por nome (normalizado)
     const porExercicio = {};
     for (const sessao of sessoes) {
         if (!sessao.exercicios_sessao) continue;
         for (const ex of sessao.exercicios_sessao) {
-            // Normalizar nome — remover "(R1)", "(R2)", etc.
+            if (!ex.peso_kg) continue; // So mostrar exercicios com peso
             const nomeBase = ex.nome.replace(/\s*\(R\d+\)\s*/g, '').trim();
-            if (!nomeBase || !ex.peso_kg) continue;
+            if (!nomeBase) continue;
             if (!porExercicio[nomeBase]) porExercicio[nomeBase] = [];
-            // Só adicionar se não tiver já para esta sessão
             const jaExiste = porExercicio[nomeBase].some(e => e.sessao_id === sessao.id);
             if (!jaExiste) {
                 porExercicio[nomeBase].push({
@@ -312,47 +299,44 @@ async function carregarExerciciosEvolucao() {
         }
     }
 
-    // Filtrar exercícios com pelo menos 2 registos
     const comHistorico = Object.entries(porExercicio)
-        .filter(([, registos]) => registos.length >= 1)
-        .sort((a, b) => a[0].localeCompare(b[0]));
+        .filter(function(entry) { return entry[1].length >= 1; })
+        .sort(function(a, b) { return a[0].localeCompare(b[0]); });
 
     if (comHistorico.length === 0) {
-        el.innerHTML = '<div class="card" style="text-align:center; padding:20px; color:var(--cinza-meio); font-size:0.9rem;">Regista pesos nas sessões para ver a evolução aqui.</div>';
+        el.innerHTML = '<div class="card" style="text-align:center; padding:20px; color:var(--cinza-meio); font-size:0.9rem;">Regista pesos nas sessoes para ver a evolucao aqui.</div>';
         return;
     }
 
-    el.innerHTML = comHistorico.map(([nome, registos]) => {
-        // Ordenar por data desc
-        const ordenados = [...registos].sort((a, b) => b.data.localeCompare(a.data));
-        const ultimo = ordenados[0];
-        const anterior = ordenados[1];
+    var html = '';
+    comHistorico.forEach(function(entry) {
+        var nome = entry[0];
+        var registos = entry[1];
+        var ordenados = registos.slice().sort(function(a, b) { return b.data.localeCompare(a.data); });
+        var ultimo = ordenados[0];
+        var anterior = ordenados[1];
 
-        // Calcular diferença
-        let diffHTML = '';
+        var diffHTML = '';
         if (anterior && ultimo.peso_kg && anterior.peso_kg) {
-            const diff = (ultimo.peso_kg - anterior.peso_kg).toFixed(1);
+            var diff = (ultimo.peso_kg - anterior.peso_kg).toFixed(1);
             if (parseFloat(diff) > 0) {
-                diffHTML = '<span style="font-size:0.72rem; background:#DCFCE7; color:#16A34A; padding:2px 8px; border-radius:99px; font-weight:600; margin-left:6px;">+' + diff + 'kg ⬆️</span>';
+                diffHTML = '<span style="font-size:0.72rem; background:#DCFCE7; color:#16A34A; padding:2px 8px; border-radius:99px; font-weight:600; margin-left:6px;">+' + diff + 'kg</span>';
             } else if (parseFloat(diff) < 0) {
-                diffHTML = '<span style="font-size:0.72rem; background:#FEE2E2; color:#DC2626; padding:2px 8px; border-radius:99px; font-weight:600; margin-left:6px;">' + diff + 'kg ⬇️</span>';
-            } else {
-                diffHTML = '<span style="font-size:0.72rem; background:var(--cinza-claro); color:var(--cinza-meio); padding:2px 8px; border-radius:99px; font-weight:600; margin-left:6px;">= igual</span>';
+                diffHTML = '<span style="font-size:0.72rem; background:#FEE2E2; color:#DC2626; padding:2px 8px; border-radius:99px; font-weight:600; margin-left:6px;">' + diff + 'kg</span>';
             }
         }
 
-        // Histórico simplificado
-        const historicoHTML = ordenados.slice(0, 4).map((r, i) => {
-            const dataStr = new Date(r.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
-            const isMais = i > 0 && r.peso_kg < ordenados[i-1].peso_kg;
-            const isMenos = i > 0 && r.peso_kg > ordenados[i-1].peso_kg;
-            return '<div style="display:flex; justify-content:space-between; padding:5px 0; border-top:1px solid var(--cinza-claro); font-size:0.78rem;">'
+        var historicoHTML = '';
+        ordenados.slice(0, 4).forEach(function(r, i) {
+            var dataStr = new Date(r.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+            var val = r.peso_kg + ' kg' + (r.reps ? ' x ' + r.reps : '');
+            historicoHTML += '<div style="display:flex; justify-content:space-between; padding:5px 0; border-top:1px solid var(--cinza-claro); font-size:0.78rem;">'
                 + '<span style="color:var(--cinza-meio);">' + dataStr + '</span>'
-                + '<span style="font-family:monospace; font-weight:600; color:' + (i === 0 ? 'var(--verde)' : 'var(--cinza-texto)') + ';">' + r.peso_kg + ' kg' + (r.reps ? ' × ' + r.reps : '') + '</span>'
+                + '<span style="font-family:monospace; font-weight:600; color:' + (i === 0 ? 'var(--verde)' : 'var(--cinza-texto)') + ';">' + val + '</span>'
                 + '</div>';
-        }).join('');
+        });
 
-        return '<div class="card" style="margin-bottom:10px;">'
+        html += '<div class="card" style="margin-bottom:10px;">'
             + '<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">'
             + '<div style="font-size:0.8rem; font-weight:700; color:var(--azul-escuro);">' + nome + '</div>'
             + '<div style="display:flex; align-items:baseline; gap:4px;">'
@@ -362,7 +346,9 @@ async function carregarExerciciosEvolucao() {
             + '</div>'
             + historicoHTML
             + '</div>';
-    }).join('');
+    });
+
+    el.innerHTML = html;
 }
 
 </script>
