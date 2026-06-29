@@ -428,13 +428,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function verDetalhesSessao(id) {
-    const { data: s, error } = await db
+    const { data: rows } = await db
         .from('sessoes_treino')
         .select('*, exercicios_sessao(*)')
         .eq('id', id)
-        .single();
+        .limit(1);
 
-    if (error || !s) { mostrarToast('Sessão não encontrada'); return; }
+    const s = rows && rows.length > 0 ? rows[0] : null;
+    if (!s) { mostrarToast('Sessão não encontrada'); return; }
 
     // Esconde upload, mostra detalhes
     document.getElementById('passo-upload').style.display = 'none';
@@ -1517,8 +1518,8 @@ async function mostrarResumoFinal(sessao, exercicios, benchmarkMsg) {
         '<div class="card">',
         '<div class="card-titulo">💡 Sugestões do Claude</div>',
         '<p style="font-size:0.82rem;color:var(--cinza-meio);margin-bottom:10px;">Cola aqui o feedback do Claude e guarda.</p>',
-        '<textarea id="sugestoes-final" placeholder="Cola aqui as sugestões do Claude..." style="width:100%;border:1.5px solid var(--cinza-borda);border-radius:var(--radius-sm);padding:10px;font-family:'DM Sans',sans-serif;font-size:0.85rem;resize:vertical;min-height:100px;outline:none;"></textarea>',
-        '<button class="btn btn-secundario" style="margin-top:8px;width:100%;" onclick="guardarSugestoesFinais('' + sessao.id + '')">Guardar sugestões</button>',
+        '<textarea id="sugestoes-final" placeholder="Cola aqui as sugestões do Claude..." style="width:100%;border:1.5px solid var(--cinza-borda);border-radius:var(--radius-sm);padding:10px;font-family:sans-serif;font-size:0.85rem;resize:vertical;min-height:100px;outline:none;"></textarea>',
+        '<button class="btn btn-secundario" style="margin-top:8px;width:100%;" onclick="guardarSugestoesFinais(\"' + sessao.id + '\")">Guardar sugestões</button>',
         '</div>',
         '<a href="index.html" class="btn btn-primario" style="margin-bottom:40px;">← Voltar ao dashboard</a>',
         '</div>'
