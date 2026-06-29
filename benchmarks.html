@@ -26,6 +26,7 @@
 
 <div class="page active">
 
+    <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--cinza-meio);margin-bottom:8px;">⏱ WODs &amp; Recordes</div>
     <div id="benchmarks-lista">
         <div class="card" style="text-align:center; padding:32px;">
             <div style="font-size:2rem; margin-bottom:8px;">🏆</div>
@@ -34,6 +35,9 @@
             <button class="btn btn-primario" style="margin-top:16px;" onclick="abrirModal()">Adicionar benchmark</button>
         </div>
     </div>
+
+    <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--cinza-meio);margin:16px 0 8px;">💪 Evolução por exercício</div>
+    <div id="exercicios-evolucao"><div class="card" style="text-align:center;padding:20px;color:var(--cinza-meio);">A carregar...</div></div>
 
 </div>
 
@@ -100,6 +104,7 @@ function mostrarToast(msg) {
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('b-data').value = new Date().toISOString().split('T')[0];
     await carregarBenchmarks();
+    await carregarExerciciosEvolucao();
 });
 
 async function carregarBenchmarks() {
@@ -265,6 +270,84 @@ async function guardarBenchmark() {
     await carregarBenchmarks();
 }
 
+
+async function carregarExerciciosEvolucao() {
+    var el = document.getElementById('exercicios-evolucao');
+    if (!el) return;
+
+    var resp = await db.from('sessoes_treino')
+        .select('id, data, exercicios_sessao(nome, peso_kg, reps)')
+        .order('data', { ascending: false })
+        .limit(50);
+    var sessoes = resp.data || [];
+
+    if (sessoes.length === 0) {
+        el.innerHTML = '<div class="card" style="text-align:center;padding:20px;color:var(--cinza-meio);">Sem sessoes ainda.</div>';
+        return;
+    }
+
+    var porEx = {};
+    sessoes.forEach(function(s) {
+        if (!s.exercicios_sessao) return;
+        s.exercicios_sessao.forEach(function(ex) {
+            if (!ex.peso_kg && !ex.reps) return;
+            var n = ex.nome.replace(/\s*\(R\d+\)\s*/g, '').trim();
+            if (!n) return;
+            if (!porEx[n]) porEx[n] = [];
+            if (!porEx[n].some(function(e) { return e.sid === s.id; })) {
+                porEx[n].push({ sid: s.id, data: s.data, peso: ex.peso_kg, reps: ex.reps });
+            }
+        });
+    });
+
+    var nomes = Object.keys(porEx).sort();
+    if (nomes.length === 0) {
+        el.innerHTML = '<div class="card" style="text-align:center;padding:20px;color:var(--cinza-meio);">Sem exercicios registados.</div>';
+        return;
+    }
+
+    var html = '';
+    nomes.forEach(function(nome) {
+        var regs = porEx[nome].slice().sort(function(a,b) { return b.data.localeCompare(a.data); });
+        var ult = regs[0];
+        var ant = regs[1];
+
+        // Badge diferença de peso
+        var badge = '';
+        if (ant && ult.peso && ant.peso) {
+            var d = (ult.peso - ant.peso).toFixed(1);
+            if (parseFloat(d) > 0) badge = '<span style="font-size:0.65rem;background:#DCFCE7;color:#16A34A;padding:1px 6px;border-radius:99px;font-weight:600;margin-left:4px;">+' + d + 'kg ⬆️</span>';
+            else if (parseFloat(d) < 0) badge = '<span style="font-size:0.65rem;background:#FEE2E2;color:#DC2626;padding:1px 6px;border-radius:99px;font-weight:600;margin-left:4px;">' + d + 'kg ⬇️</span>';
+        }
+
+        // Valor principal
+        var partes = [];
+        if (ult.peso) partes.push('<span style="font-family:monospace;font-size:1.2rem;font-weight:700;color:var(--verde);">' + ult.peso + ' kg</span>');
+        if (ult.reps) partes.push('<span style="font-family:monospace;font-size:1.2rem;font-weight:700;color:var(--azul-escuro);">' + ult.reps + '</span>');
+        var valorHTML = partes.join('<span style="color:var(--cinza-meio);margin:0 4px;">×</span>');
+
+        // Histórico
+        var hist = '';
+        regs.slice(0, 4).forEach(function(r, i) {
+            var ds = new Date(r.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+            var v = [];
+            if (r.peso) v.push(r.peso + ' kg');
+            if (r.reps) v.push(r.reps);
+            hist += '<div style="display:flex;justify-content:space-between;padding:5px 0;border-top:1px solid var(--cinza-claro);font-size:0.78rem;">'
+                + '<span style="color:var(--cinza-meio);">' + ds + '</span>'
+                + '<span style="font-family:monospace;font-weight:600;color:' + (i===0 ? 'var(--verde)' : 'var(--cinza-texto)') + ';">' + v.join(' x ') + '</span>'
+                + '</div>';
+        });
+
+        html += '<div class="card" style="margin-bottom:10px;">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+            + '<div style="font-size:0.8rem;font-weight:700;color:var(--azul-escuro);">' + nome + '</div>'
+            + '<div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;">' + valorHTML + badge + '</div>'
+            + '</div>' + hist + '</div>';
+    });
+
+    el.innerHTML = html;
+}
 </script>
 </body>
 </html>
