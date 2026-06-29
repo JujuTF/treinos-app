@@ -318,88 +318,76 @@ async function carregarResumoSemana() {
     const container = document.getElementById('resumo-semana');
     if (!container) return;
 
-    // Calcular início da semana (segunda-feira)
     const agora = new Date();
-    const diaSemana = agora.getDay(); // 0=dom, 1=seg...
+    const diaSemana = agora.getDay();
     const diasDesdeSegunda = diaSemana === 0 ? 6 : diaSemana - 1;
     const segundaFeira = new Date(agora);
     segundaFeira.setDate(agora.getDate() - diasDesdeSegunda);
     const inicioSemana = segundaFeira.toISOString().split('T')[0];
-    const hoje = agora.toISOString().split('T')[0];
+    const hojeStr = agora.toISOString().split('T')[0];
 
-    // Buscar dados da semana em paralelo
     const [{ data: sessoes }, { data: registos }] = await Promise.all([
-        db.from('sessoes_treino').select('data, nome_treino, tempo_wod, rounds_completos').gte('data', inicioSemana).lte('data', hoje),
-        db.from('registo_diario').select('data, energia, horas_sono, agua_ml, meta_agua_ml, flare_fibromialgia').gte('data', inicioSemana).lte('data', hoje)
+        db.from('sessoes_treino').select('data').gte('data', inicioSemana).lte('data', hojeStr),
+        db.from('registo_diario').select('data, energia, horas_sono, flare_fibromialgia').gte('data', inicioSemana).lte('data', hojeStr)
     ]);
 
-    const numTreinos = sessoes?.length || 0;
-    const mediaEnergia = registos && registos.length > 0
-        ? (registos.filter(r => r.energia).reduce((s, r) => s + r.energia, 0) / registos.filter(r => r.energia).length).toFixed(1)
+    const numTreinos = sessoes ? sessoes.length : 0;
+    const comEnergia = (registos || []).filter(r => r.energia);
+    const mediaEnergia = comEnergia.length > 0
+        ? (comEnergia.reduce((s, r) => s + r.energia, 0) / comEnergia.length).toFixed(1)
         : null;
-    const mediaSono = registos && registos.length > 0
-        ? (registos.filter(r => r.horas_sono).reduce((s, r) => s + parseFloat(r.horas_sono), 0) / registos.filter(r => r.horas_sono).length).toFixed(1)
+    const comSono = (registos || []).filter(r => r.horas_sono);
+    const mediaSono = comSono.length > 0
+        ? (comSono.reduce((s, r) => s + parseFloat(r.horas_sono), 0) / comSono.length).toFixed(1)
         : null;
-    const flares = registos?.filter(r => r.flare_fibromialgia).length || 0;
+    const flares = (registos || []).filter(r => r.flare_fibromialgia).length;
+    const energiaEmoji = ['', String.fromCodePoint(0x1F634), String.fromCodePoint(0x1F611), String.fromCodePoint(0x1F642), String.fromCodePoint(0x1F4AA), String.fromCodePoint(0x1F525)];
+    const diasLetras = ['S','T','Q','Q','S','S','D'];
 
-    // Mini calendário da semana com treinos
-    const diasSemana = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
-    const diasCalendario = [];
+    // Calendário
+    const dias = [];
     for (let i = 0; i < 7; i++) {
         const d = new Date(segundaFeira);
         d.setDate(segundaFeira.getDate() + i);
-        const dataStr = d.toISOString().split('T')[0];
-        const treinou = sessoes?.some(s => s.data === dataStr);
-        const registo = registos?.find(r => r.data === dataStr);
-        const energia = registo?.energia;
-        const ehHoje = dataStr === hoje;
-        const isFuturo = dataStr > hoje;
-        diasCalendario.push({ dataStr, treinou, energia, ehHoje, isFuturo, diaSemana: diasSemana[i] });
+        const ds = d.toISOString().split('T')[0];
+        const treinou = (sessoes || []).some(s => s.data === ds);
+        const reg = (registos || []).find(r => r.data === ds);
+        const energia = reg ? reg.energia : null;
+        const ehHoje = ds === hojeStr;
+        const futuro = ds > hojeStr;
+        dias.push({ letra: diasLetras[i], treinou, energia, ehHoje, futuro });
     }
 
-    const energiaEmoji = ['', '😴', '😑', '🙂', '💪', '🔥'];
+    // Construir HTML sem template literals problemáticos
+    const partes = [];
+    partes.push('<div class="card">');
+    partes.push('<div class="card-titulo">Esta semana</div>');
+    partes.push('<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:14px;">');
 
-    container.innerHTML = \`
-        <div class="card">
-            <div class="card-titulo">Esta semana</div>
+    dias.forEach(function(d) {
+        var bg = d.ehHoje ? 'var(--verde)' : d.treinou ? 'var(--verde-claro)' : d.futuro ? 'transparent' : 'var(--cinza-claro)';
+        var cor = d.ehHoje ? 'white' : d.treinou ? 'var(--verde)' : 'var(--cinza-meio)';
+        var brd = d.futuro && !d.ehHoje ? '1.5px dashed var(--cinza-borda)' : 'none';
+        var ico = d.energia ? energiaEmoji[d.energia] : d.treinou ? '✓' : d.futuro ? '' : '·';
+        var fs = d.energia ? '1rem' : '0.75rem';
+        partes.push('<div style="text-align:center">');
+        partes.push('<div style="font-size:0.6rem;color:var(--cinza-meio);margin-bottom:3px;font-weight:600">' + d.letra + '</div>');
+        partes.push('<div style="width:32px;height:32px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:' + fs + ';background:' + bg + ';color:' + cor + ';border:' + brd + '">' + ico + '</div>');
+        partes.push('</div>');
+    });
 
-            <!-- Mini calendário -->
-            <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:14px;">
-                \${diasCalendario.map(d => \`
-                    <div style="text-align:center;">
-                        <div style="font-size:0.6rem; color:var(--cinza-meio); margin-bottom:3px; font-weight:600;">\${d.diaSemana}</div>
-                        <div style="
-                            width:32px; height:32px; border-radius:50%; margin:0 auto;
-                            display:flex; align-items:center; justify-content:center;
-                            font-size:\${d.energia ? '1rem' : '0.75rem'};
-                            background:\${d.ehHoje ? 'var(--verde)' : d.treinou ? 'var(--verde-claro)' : d.isFuturo ? 'transparent' : 'var(--cinza-claro)'};
-                            color:\${d.ehHoje ? 'white' : d.treinou ? 'var(--verde)' : 'var(--cinza-meio)'};
-                            border:\${d.ehHoje ? 'none' : d.isFuturo ? '1.5px dashed var(--cinza-borda)' : 'none'};
-                            font-weight:\${d.ehHoje ? '700' : '500'};
-                        ">
-                            \${d.energia ? energiaEmoji[d.energia] : d.treinou ? '✓' : d.isFuturo ? '' : '·'}
-                        </div>
-                    </div>
-                \`).join('')}
-            </div>
-
-            <!-- Stats da semana -->
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
-                <div style="text-align:center; background:var(--fundo); border-radius:var(--radius-sm); padding:10px;">
-                    <div style="font-family:'DM Mono',monospace; font-size:1.4rem; font-weight:700; color:var(--verde);">\${numTreinos}</div>
-                    <div style="font-size:0.68rem; color:var(--cinza-meio); margin-top:2px;">treinos</div>
-                </div>
-                <div style="text-align:center; background:var(--fundo); border-radius:var(--radius-sm); padding:10px;">
-                    <div style="font-size:1.4rem; font-weight:700; color:var(--azul-escuro);">\${mediaEnergia ? energiaEmoji[Math.round(parseFloat(mediaEnergia))] : '—'}</div>
-                    <div style="font-size:0.68rem; color:var(--cinza-meio); margin-top:2px;">energia média</div>
-                </div>
-                <div style="text-align:center; background:var(--fundo); border-radius:var(--radius-sm); padding:10px;">
-                    <div style="font-family:'DM Mono',monospace; font-size:1.4rem; font-weight:700; color:var(--azul-escuro);">\${mediaSono ?? '—'}</div>
-                    <div style="font-size:0.68rem; color:var(--cinza-meio); margin-top:2px;">h sono médio</div>
-                </div>
-            </div>
-            \${flares > 0 ? \`<div style="margin-top:8px; font-size:0.78rem; color:var(--laranja);">🌪️ \${flares} dia\${flares>1?'s':''} com flare esta semana</div>\` : ''}
-        </div>\`;
+    partes.push('</div>');
+    partes.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">');
+    partes.push('<div style="text-align:center;background:var(--fundo);border-radius:var(--radius-sm);padding:10px"><div style="font-size:1.4rem;font-weight:700;color:var(--verde)">' + numTreinos + '</div><div style="font-size:0.68rem;color:var(--cinza-meio);margin-top:2px">treinos</div></div>');
+    var emojiMedia = mediaEnergia ? energiaEmoji[Math.round(parseFloat(mediaEnergia))] : '—';
+    partes.push('<div style="text-align:center;background:var(--fundo);border-radius:var(--radius-sm);padding:10px"><div style="font-size:1.4rem;font-weight:700;color:var(--azul-escuro)">' + emojiMedia + '</div><div style="font-size:0.68rem;color:var(--cinza-meio);margin-top:2px">energia média</div></div>');
+    partes.push('<div style="text-align:center;background:var(--fundo);border-radius:var(--radius-sm);padding:10px"><div style="font-size:1.4rem;font-weight:700;color:var(--azul-escuro)">' + (mediaSono || '—') + '</div><div style="font-size:0.68rem;color:var(--cinza-meio);margin-top:2px">h sono médio</div></div>');
+    partes.push('</div>');
+    if (flares > 0) {
+        partes.push('<div style="margin-top:8px;font-size:0.78rem;color:var(--laranja)">🌪️ ' + flares + ' dia' + (flares > 1 ? 's' : '') + ' com flare esta semana</div>');
+    }
+    partes.push('</div>');
+    container.innerHTML = partes.join('');
 }
 
 // ============================================

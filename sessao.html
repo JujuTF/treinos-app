@@ -361,9 +361,14 @@
                 style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Sans',sans-serif; font-size:0.9rem; resize:vertical; min-height:80px; outline:none;"></textarea>
         </div>
 
-        <button class="btn btn-primario" onclick="guardarSessaoCompleta()" style="margin-bottom:20px;">
-            ✓ Guardar sessão
-        </button>
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+            <button class="btn btn-secundario" style="flex:1;" onclick="guardarProgresso()">
+                💾 Guardar progresso
+            </button>
+            <button class="btn btn-primario" style="flex:2;" onclick="terminarTreino()">
+                ✓ Terminar treino
+            </button>
+        </div>
     </div>
 
 </div>
@@ -855,12 +860,6 @@ async function iniciarTreino() {
     // Comparação com sessão anterior
     await mostrarComparacao(nome);
 
-    // Restaurar autosave se existir
-    const temAutosave = restaurarAutosave();
-    if (temAutosave) {
-        mostrarToast('Treino restaurado ✓');
-    }
-
     // Parsear e renderizar plano
     if (planoMD) {
         blocosData = parsearMD(planoMD);
@@ -1290,7 +1289,16 @@ function ajustarRondas(delta) {
 }
 
 // ---- GUARDAR ----
-async function guardarSessaoCompleta() {
+async function guardarProgresso() {
+    autosave();
+    mostrarToast('Progresso guardado 💾');
+}
+
+async function terminarTreino() {
+    await guardarSessaoCompleta(true);
+}
+
+async function guardarSessaoCompleta(mostrarResumo = false) {
     const nome = document.getElementById('sess-nome').value.trim() || 'Treino';
     const data = document.getElementById('sess-data').value;
     const notas = document.getElementById('sess-notas').value.trim();
@@ -1399,10 +1407,7 @@ async function guardarSessaoCompleta() {
     // Atualizar benchmark automaticamente
     const benchmarkMsg = await atualizarBenchmarkAutomatico(nome, payload.tempo_wod, payload.rounds_completos, data);
 
-    limparAutosave();
     mostrarToast(benchmarkMsg ? `Sessão guardada · ${benchmarkMsg}` : 'Sessão guardada ✓');
-    // Guardar ID da sessão para o dashboard mostrar o detalhe correto
-    try { sessionStorage.setItem('ultima_sessao_id', sessao.id); } catch(e) {}
     setTimeout(() => window.location.href = 'index.html', 1800);
 }
 
@@ -1460,6 +1465,86 @@ async function atualizarBenchmarkAutomatico(nome, tempo_wod, rounds, data) {
         console.error('Erro benchmark:', e);
         return null;
     }
+}
+
+async function mostrarResumoFinal(sessao, exercicios, benchmarkMsg) {
+    const tempo = sessao.tempo_wod
+        ? Math.floor(sessao.tempo_wod/60) + ':' + String(sessao.tempo_wod%60).padStart(2,'0')
+        : null;
+
+    // Gerar texto para copiar para o Claude
+    let textoResumo = '## Sessão de treino — ' + sessao.data + '\n';
+    textoResumo += '**Treino:** ' + sessao.nome_treino + '\n';
+    if (tempo) textoResumo += '**Tempo WOD:** ' + tempo + '\n';
+    if (sessao.rounds_completos) textoResumo += '**Rondas:** ' + sessao.rounds_completos + '\n';
+    if (sessao.notas) textoResumo += '**Notas:** ' + sessao.notas + '\n';
+    if (exercicios.length > 0) {
+        textoResumo += '\n### Exercícios\n';
+        exercicios.forEach(ex => {
+            textoResumo += '- **' + ex.nome + '**';
+            if (ex.peso_kg) textoResumo += ' — ' + ex.peso_kg + 'kg';
+            if (ex.reps) textoResumo += ' × ' + ex.reps;
+            textoResumo += '\n';
+        });
+    }
+
+    // Criar overlay de resumo final
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:var(--fundo);z-index:400;overflow-y:auto;padding:20px;';
+
+    const tempoHTML = tempo ? '<span style="font-family:monospace;font-size:2rem;font-weight:700;color:var(--laranja);">⏱ ' + tempo + '</span>' : '';
+    const rondasHTML = sessao.rounds_completos ? '<span style="font-size:1.2rem;font-weight:600;color:var(--verde);">🔄 ' + sessao.rounds_completos + ' rondas</span>' : '';
+    const benchHTML = benchmarkMsg ? '<div style="background:var(--verde);color:white;border-radius:var(--radius-sm);padding:12px 16px;margin:14px 0;font-weight:700;font-size:1rem;">' + benchmarkMsg + '</div>' : '';
+
+    overlay.innerHTML = [
+        '<div style="max-width:600px;margin:0 auto;">',
+        '<div style="text-align:center;padding:24px 0 16px;">',
+        '<div style="font-size:3rem;margin-bottom:8px;">🎉</div>',
+        '<div style="font-size:1.4rem;font-weight:700;color:var(--azul-escuro);">Treino concluído!</div>',
+        '<div style="font-size:0.9rem;color:var(--cinza-meio);margin-top:4px;">' + sessao.nome_treino + '</div>',
+        '</div>',
+        benchHTML,
+        '<div style="display:flex;gap:16px;justify-content:center;margin:16px 0;flex-wrap:wrap;">',
+        tempoHTML,
+        rondasHTML,
+        '</div>',
+        '<div class="card">',
+        '<div class="card-titulo">Resumo para o Claude</div>',
+        '<p style="font-size:0.82rem;color:var(--cinza-meio);margin-bottom:10px;">Copia e envia ao Claude para análise.</p>',
+        '<textarea id="resumo-final-texto" readonly style="width:100%;border:1.5px solid var(--cinza-borda);border-radius:var(--radius-sm);padding:10px;font-family:monospace;font-size:0.75rem;resize:vertical;min-height:140px;color:var(--cinza-texto);background:var(--fundo);outline:none;">' + textoResumo + '</textarea>',
+        '<button class="btn btn-primario" style="margin-top:8px;" onclick="copiarResumoFinal()">📋 Copiar resumo</button>',
+        '</div>',
+        '<div class="card">',
+        '<div class="card-titulo">💡 Sugestões do Claude</div>',
+        '<p style="font-size:0.82rem;color:var(--cinza-meio);margin-bottom:10px;">Cola aqui o feedback do Claude e guarda.</p>',
+        '<textarea id="sugestoes-final" placeholder="Cola aqui as sugestões do Claude..." style="width:100%;border:1.5px solid var(--cinza-borda);border-radius:var(--radius-sm);padding:10px;font-family:'DM Sans',sans-serif;font-size:0.85rem;resize:vertical;min-height:100px;outline:none;"></textarea>',
+        '<button class="btn btn-secundario" style="margin-top:8px;width:100%;" onclick="guardarSugestoesFinais('' + sessao.id + '')">Guardar sugestões</button>',
+        '</div>',
+        '<a href="index.html" class="btn btn-primario" style="margin-bottom:40px;">← Voltar ao dashboard</a>',
+        '</div>'
+    ].join('');
+
+    document.body.appendChild(overlay);
+    window.scrollTo(0, 0);
+}
+
+async function copiarResumoFinal() {
+    const texto = document.getElementById('resumo-final-texto').value;
+    try {
+        await navigator.clipboard.writeText(texto);
+        mostrarToast('Copiado ✓');
+    } catch(e) {
+        document.getElementById('resumo-final-texto').select();
+        mostrarToast('Seleciona e copia manualmente');
+    }
+}
+
+async function guardarSugestoesFinais(sessaoId) {
+    const sugestoes = document.getElementById('sugestoes-final').value.trim();
+    if (!sugestoes) return;
+    const { error } = await db.from('sessoes_treino').update({ sugestoes_claude: sugestoes }).eq('id', sessaoId);
+    if (error) mostrarToast('Erro ao guardar 😕');
+    else mostrarToast('Sugestões guardadas ✓');
 }
 
 </script>
