@@ -422,8 +422,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Ver detalhes de sessão existente
     const params = new URLSearchParams(window.location.search);
     const sessaoId = params.get('id');
+    const gerado = params.get('gerado');
+
     if (sessaoId) {
         await verDetalhesSessao(sessaoId);
+    } else if (gerado === '1') {
+        // Treino gerado pelo Claude — carregar automaticamente
+        const mdGerado = sessionStorage.getItem('treino_gerado_md');
+        const dataGerado = sessionStorage.getItem('treino_gerado_data');
+        if (mdGerado) {
+            sessionStorage.removeItem('treino_gerado_md');
+            planoMD = mdGerado;
+            // Auto-preencher nome a partir do MD
+            const matchNome = mdGerado.match(/^#\s+(.+)/m);
+            if (matchNome) {
+                document.getElementById('sess-nome').value = matchNome[1].replace(/[🔴🔵🟡🟢]/g, '').trim();
+            }
+            if (dataGerado) document.getElementById('sess-data').value = dataGerado;
+            mostrarToast('Treino gerado pelo Claude ✓');
+            await iniciarTreino();
+        }
     }
 });
 
@@ -1546,6 +1564,89 @@ async function guardarSugestoesFinais(sessaoId) {
     const sugestoes = document.getElementById('sugestoes-final').value.trim();
     if (!sugestoes) return;
     const { error } = await db.from('sessoes_treino').update({ sugestoes_claude: sugestoes }).eq('id', sessaoId);
+    if (error) mostrarToast('Erro ao guardar 😕');
+    else mostrarToast('Sugestões guardadas ✓');
+}
+
+
+async function analisarComClaude(sessaoId) {
+    const btn = document.getElementById('btn-analisar');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ A analisar...'; }
+
+    try {
+        // Buscar dados da sessão
+        const { data: rows } = await db
+            .from('sessoes_treino')
+            .select('*, exercicios_sessao(*)')
+            .eq('id', sessaoId)
+            .limit(1);
+
+        const s = rows && rows.length > 0 ? rows[0] : null;
+        if (!s) { mostrarToast('Sessão não encontrada'); return; }
+
+        const exs = (s.exercicios_sessao || []).sort((a,b) => a.ordem - b.ordem);
+        const tempo = s.tempo_wod
+            ? Math.floor(s.tempo_wod/60) + ':' + String(s.tempo_wod%60).padStart(2,'0')
+            : null;
+
+        let resumo = '## Sessão de treino — ' + s.data + '\n';
+        resumo += '**Treino:** ' + s.nome_treino + '\n';
+        if (tempo) resumo += '**Tempo WOD:** ' + tempo + '\n';
+        if (s.rounds_completos) resumo += '**Rondas:** ' + s.rounds_completos + '\n';
+        if (s.notas) resumo += '**Notas:** ' + s.notas + '\n';
+        if (exs.length > 0) {
+            resumo += '\n### Exercícios\n';
+            exs.forEach(ex => {
+                resumo += '- **' + ex.nome + '**';
+                if (ex.peso_kg) resumo += ' — ' + ex.peso_kg + 'kg';
+                if (ex.reps) resumo += ' × ' + ex.reps;
+                resumo += '\n';
+            });
+        }
+        if (s.sugestoes_claude) {
+            resumo += '\n### Sugestões anteriores\n' + s.sugestoes_claude;
+        }
+
+        const response = await fetch('https://treinos-claude.jujutfigueiredo.workers.dev', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: 'analisar_treino', dados: { resumo } })
+        });
+
+        const result = await response.json();
+        if (result.error) throw new Error(result.error);
+
+        // Mostrar resultado numa overlay
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:var(--fundo);z-index:400;overflow-y:auto;padding:20px;';
+        overlay.innerHTML = [
+            '<div style="max-width:600px;margin:0 auto;">',
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">',
+            '<button onclick="this.closest('div[style]').remove()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--cinza-meio);">‹</button>',
+            '<h2 style="font-size:1.1rem;font-weight:700;color:var(--azul-escuro);">Análise do Claude</h2>',
+            '</div>',
+            '<div class="card" style="white-space:pre-wrap;font-size:0.88rem;line-height:1.6;color:var(--cinza-texto);">' + result.texto.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>',
+            '<div class="card" style="margin-top:12px;">',
+            '<div class="card-titulo">💡 Guardar sugestões</div>',
+            '<textarea id="analise-sugestoes" style="width:100%;border:1.5px solid var(--cinza-borda);border-radius:var(--radius-sm);padding:10px;font-family:sans-serif;font-size:0.85rem;resize:vertical;min-height:100px;outline:none;">' + result.texto + '</textarea>',
+            '<button class="btn btn-primario" style="margin-top:8px;" onclick="guardarSugestoesAnalise('' + sessaoId + '')">Guardar sugestões</button>',
+            '</div>',
+            '</div>'
+        ].join('');
+        document.body.appendChild(overlay);
+
+    } catch(e) {
+        console.error(e);
+        mostrarToast('Erro na análise 😕');
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🤖 Analisar com Claude'; }
+    }
+}
+
+async function guardarSugestoesAnalise(sessaoId) {
+    const texto = document.getElementById('analise-sugestoes').value.trim();
+    if (!texto) return;
+    const { error } = await db.from('sessoes_treino').update({ sugestoes_claude: texto }).eq('id', sessaoId);
     if (error) mostrarToast('Erro ao guardar 😕');
     else mostrarToast('Sugestões guardadas ✓');
 }
