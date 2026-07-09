@@ -492,3 +492,8 @@ body {
     body { padding-bottom: 0; }
     .page { padding: 28px 20px; }
 }
+
+
+/* Botão gerar treino — escondido por JS, mostrado com classe */
+#btn-gerar-wrap { display: none; }
+#btn-gerar-wrap.visivel { display: block !important; }

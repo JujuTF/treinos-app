@@ -338,7 +338,7 @@ async function carregarTreinoHoje() {
                     🏋️ Iniciar treino de hoje
                 </a>`;
             const wrap = document.getElementById('btn-gerar-wrap');
-            if (wrap) wrap.style.display = 'block';
+            if (wrap) wrap.classList.add('visivel');
         }
     } catch(e) {
         container.innerHTML = `
@@ -346,7 +346,7 @@ async function carregarTreinoHoje() {
                 🏋️ Iniciar treino de hoje
             </a>`;
         const wrap = document.getElementById('btn-gerar-wrap');
-        if (wrap) wrap.style.display = 'block';
+        if (wrap) wrap.classList.add('visivel');
     }
 }
 
