@@ -450,23 +450,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (estado.planoMD) planoMD = estado.planoMD;
                     cronometroSegundos = estado.cronometroSegundos || 0;
                     rondasWOD = estado.rondasWOD || 0;
-                    atualizarDisplayCron();
-                    const cronRondas = document.getElementById('cron-rondas'); if (cronRondas) cronRondas.textContent = rondasWOD;
-                    // Restaurar exercícios
-                    if (estado.exercicios && estado.exercicios.length > 0) {
+                    // Iniciar treino se houver plano ou exercícios guardados
+                    if (estado.planoMD || (estado.exercicios && estado.exercicios.length > 0)) {
                         await iniciarTreino();
-                        // Aguardar render e preencher valores
-                        setTimeout(() => {
-                            const exRows = document.querySelectorAll('.ex-row');
-                            estado.exercicios.forEach((ex, i) => {
-                                if (exRows[i]) {
-                                    if (ex.peso) { const el = exRows[i].querySelector('.ex-peso'); if (el) el.value = ex.peso; }
-                                    if (ex.reps) { const el = exRows[i].querySelector('.ex-reps'); if (el) el.value = ex.reps; }
-                                    if (ex.series) { const el = exRows[i].querySelector('.ex-series'); if (el) el.value = ex.series; }
-                                    if (ex.notas) { const el = exRows[i].querySelector('.ex-notas'); if (el) el.value = ex.notas; }
-                                }
-                            });
-                        }, 300);
+                        // Agora o DOM do treino existe — atualizar cronómetro e rondas
+                        atualizarDisplayCron();
+                        const cronRondas = document.getElementById('cron-rondas');
+                        if (cronRondas) cronRondas.textContent = rondasWOD;
+                        // Preencher valores dos exercícios
+                        if (estado.exercicios && estado.exercicios.length > 0) {
+                            setTimeout(() => {
+                                const exRows = document.querySelectorAll('.ex-row');
+                                estado.exercicios.forEach((ex, i) => {
+                                    if (exRows[i]) {
+                                        if (ex.peso) { const el = exRows[i].querySelector('.ex-peso'); if (el) el.value = ex.peso; }
+                                        if (ex.reps) { const el = exRows[i].querySelector('.ex-reps'); if (el) el.value = ex.reps; }
+                                        if (ex.series) { const el = exRows[i].querySelector('.ex-series'); if (el) el.value = ex.series; }
+                                        if (ex.notas) { const el = exRows[i].querySelector('.ex-notas'); if (el) el.value = ex.notas; }
+                                    }
+                                });
+                            }, 300);
+                        }
                     }
                     mostrarToast('Sessão restaurada 🔄');
                 } else {
@@ -1753,6 +1757,4 @@ async function guardarSugestoesAnalise(sessaoId) {
 
 </script>
 </body>
-</html> 
-  
- 
+</html>
