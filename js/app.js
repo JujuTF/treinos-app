@@ -845,7 +845,37 @@ async function guardarCiclo() {
 
 const WORKER_URL = 'https://treinos-claude.jujutfigueiredo.workers.dev';
 
-async function gerarTreinoHoje() {
+function selecionarTempo(btn) {
+    // Destacar botão selecionado
+    document.querySelectorAll('.tempo-btn').forEach(b => b.classList.remove('btn-primario'));
+    btn.classList.add('btn-primario');
+    // Preencher o campo custom com o valor
+    const input = document.getElementById('gerar-tempo-custom');
+    if (input) input.value = btn.dataset.min;
+}
+
+function confirmarGerarTreino() {
+    const tempoInput = document.getElementById('gerar-tempo-custom');
+    const notasInput = document.getElementById('gerar-notas');
+    const tempo = tempoInput ? parseInt(tempoInput.value) || null : null;
+    const notas = notasInput ? notasInput.value.trim() : '';
+
+    if (!tempo) {
+        mostrarToast('Indica o tempo disponível');
+        return;
+    }
+
+    fecharModal('modal-gerar-treino');
+    _gerarTreinoHoje(tempo, notas);
+}
+
+function gerarTreinoHoje() {
+    // Abrir modal de configuração antes de gerar
+    const modal = document.getElementById('modal-gerar-treino');
+    if (modal) modal.classList.add('open');
+}
+
+async function _gerarTreinoHoje(tempoMinutos, notasExtra) {
     var btn = document.getElementById('btn-gerar-treino');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ A gerar treino...'; }
 
@@ -891,7 +921,8 @@ async function gerarTreinoHoje() {
             ultimo_treino: ultimaSessao.length > 0
                 ? ultimaSessao[0].nome_treino + ' (' + ultimaSessao[0].data + ')'
                 : null,
-            notas_extra: reg.notas || null
+            notas_extra: notasExtra || reg.notas || null,
+            tempo_disponivel_min: tempoMinutos || null
         };
 
         var response = await fetch(WORKER_URL, {

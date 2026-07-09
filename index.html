@@ -367,6 +367,37 @@
 <div id="deploy-info" style="text-align:center; padding: 8px; color: var(--cinza-meio); font-size: 0.7rem; margin-bottom: 4px;"></div>
 
 
+<!-- MODAL — GERAR TREINO COM CLAUDE -->
+<div class="modal-overlay" id="modal-gerar-treino">
+    <div class="modal">
+        <div class="modal-titulo">⚡ Gerar treino de hoje</div>
+
+        <div class="form-grupo">
+            <label>Tempo disponível</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-secundario tempo-btn" data-min="30" style="flex:1;" onclick="selecionarTempo(this)">30 min</button>
+                <button class="btn btn-secundario tempo-btn" data-min="45" style="flex:1;" onclick="selecionarTempo(this)">45 min</button>
+                <button class="btn btn-secundario tempo-btn" data-min="60" style="flex:1;" onclick="selecionarTempo(this)">60 min</button>
+                <button class="btn btn-secundario tempo-btn" data-min="90" style="flex:1;" onclick="selecionarTempo(this)">90 min</button>
+            </div>
+            <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+                <input type="number" id="gerar-tempo-custom" min="10" max="180" placeholder="ou escreve (min)"
+                    style="width:100%; padding:10px 14px; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); font-family:'DM Sans',sans-serif; font-size:0.95rem;">
+            </div>
+        </div>
+
+        <div class="form-grupo">
+            <label>Notas para o Claude <span style="font-weight:400; text-transform:none;">(opcional)</span></label>
+            <textarea id="gerar-notas" placeholder="ex: quero focar em pernas, evitar saltos, tenho dores nas costas..." style="min-height:70px;"></textarea>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-secundario" style="flex:1;" onclick="fecharModal('modal-gerar-treino')">Cancelar</button>
+            <button class="btn btn-primario" style="flex:2;" onclick="confirmarGerarTreino()">Gerar treino ⚡</button>
+        </div>
+    </div>
+</div>
+
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
