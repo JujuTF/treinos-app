@@ -1676,31 +1676,21 @@ async function analisarComClaude(sessaoId) {
             ? Math.floor(s.tempo_wod/60) + ':' + String(s.tempo_wod%60).padStart(2,'0')
             : null;
 
-        var resumo = '## Sessão de treino — ' + s.data + '
-';
-        resumo += '**Treino:** ' + s.nome_treino + '
-';
-        if (tempo) resumo += '**Tempo WOD:** ' + tempo + '
-';
-        if (s.rounds_completos) resumo += '**Rondas:** ' + s.rounds_completos + '
-';
-        if (s.notas) resumo += '**Notas:** ' + s.notas + '
-';
+        var resumo = '## Sessão de treino — ' + s.data + '\n';
+        resumo += '**Treino:** ' + s.nome_treino + '\n';
+        if (tempo) resumo += '**Tempo WOD:** ' + tempo + '\n';
+        if (s.rounds_completos) resumo += '**Rondas:** ' + s.rounds_completos + '\n';
+        if (s.notas) resumo += '**Notas:** ' + s.notas + '\n';
         if (exs.length > 0) {
-            resumo += '
-### Exercícios
-';
+            resumo += '\n### Exercícios\n';
             exs.forEach(function(ex) {
                 resumo += '- **' + ex.nome + '**';
-                if (ex.peso_kg) resumo += ' — ' + ex.peso_kg + 'kg';
+                if (ex.peso_kg) resumo += ' \u2014 ' + ex.peso_kg + 'kg';
                 if (ex.reps) resumo += ' x ' + ex.reps;
-                resumo += '
-';
+                resumo += '\n';
             });
         }
-        if (s.sugestoes_claude) resumo += '
-### Sugestões anteriores
-' + s.sugestoes_claude;
+        if (s.sugestoes_claude) resumo += '\n### Sugestões anteriores\n' + s.sugestoes_claude;
 
         var response = await fetch('https://treinos-claude.jujutfigueiredo.workers.dev', {
             method: 'POST',
