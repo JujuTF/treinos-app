@@ -451,7 +451,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     cronometroSegundos = estado.cronometroSegundos || 0;
                     rondasWOD = estado.rondasWOD || 0;
                     atualizarDisplayCron();
-                    document.getElementById('cron-rondas').textContent = rondasWOD;
+                    const cronRondas = document.getElementById('cron-rondas'); if (cronRondas) cronRondas.textContent = rondasWOD;
                     // Restaurar exercícios
                     if (estado.exercicios && estado.exercicios.length > 0) {
                         await iniciarTreino();
@@ -1352,10 +1352,11 @@ function resetCronometro() {
 }
 
 function atualizarDisplayCron() {
+    const el = document.getElementById('cron-display');
+    if (!el) return;
     const m = Math.floor(cronometroSegundos / 60);
     const s = cronometroSegundos % 60;
-    document.getElementById('cron-display').textContent =
-        `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
 function ajustarRondas(delta) {
@@ -1752,5 +1753,4 @@ async function guardarSugestoesAnalise(sessaoId) {
 
 </script>
 </body>
-</html> 
- 
+</html>
