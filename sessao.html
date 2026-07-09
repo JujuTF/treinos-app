@@ -400,6 +400,8 @@ let counterExSegundos = 0;
 let counterExAtivo = false;
 
 // ---- INIT ----
+const AUTOSAVE_KEY = 'treinos_sessao_ativa';
+
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('sess-data').value = hoje();
     document.getElementById('header-data').textContent = new Date().toLocaleDateString('pt-PT', {
@@ -419,13 +421,62 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Autosave periódico a cada 30s
+    setInterval(() => {
+        const nome = document.getElementById('sess-nome')?.value;
+        if (nome || planoMD) autosave();
+    }, 30000);
+
     // Ver detalhes de sessão existente
     const params = new URLSearchParams(window.location.search);
     const sessaoId = params.get('id');
     const gerado = params.get('gerado');
 
+    const continuar = params.get('continuar');
+
     if (sessaoId) {
         await verDetalhesSessao(sessaoId);
+    } else if (continuar === '1') {
+        // Restaurar sessão em curso do localStorage
+        try {
+            const raw = localStorage.getItem(AUTOSAVE_KEY);
+            if (raw) {
+                const estado = JSON.parse(raw);
+                // Verificar que não é de outro dia (> 12h)
+                if (Date.now() - estado.ts < 12 * 60 * 60 * 1000) {
+                    if (estado.nome) document.getElementById('sess-nome').value = estado.nome;
+                    if (estado.data) document.getElementById('sess-data').value = estado.data;
+                    if (estado.notas) document.getElementById('sess-notas').value = estado.notas;
+                    if (estado.planoMD) planoMD = estado.planoMD;
+                    cronometroSegundos = estado.cronometroSegundos || 0;
+                    rondasWOD = estado.rondasWOD || 0;
+                    atualizarDisplayCron();
+                    document.getElementById('cron-rondas').textContent = rondasWOD;
+                    // Restaurar exercícios
+                    if (estado.exercicios && estado.exercicios.length > 0) {
+                        await iniciarTreino();
+                        // Aguardar render e preencher valores
+                        setTimeout(() => {
+                            const exRows = document.querySelectorAll('.ex-row');
+                            estado.exercicios.forEach((ex, i) => {
+                                if (exRows[i]) {
+                                    if (ex.peso) { const el = exRows[i].querySelector('.ex-peso'); if (el) el.value = ex.peso; }
+                                    if (ex.reps) { const el = exRows[i].querySelector('.ex-reps'); if (el) el.value = ex.reps; }
+                                    if (ex.series) { const el = exRows[i].querySelector('.ex-series'); if (el) el.value = ex.series; }
+                                    if (ex.notas) { const el = exRows[i].querySelector('.ex-notas'); if (el) el.value = ex.notas; }
+                                }
+                            });
+                        }, 300);
+                    }
+                    mostrarToast('Sessão restaurada 🔄');
+                } else {
+                    limparAutosave();
+                    mostrarToast('Sessão anterior expirou');
+                }
+            }
+        } catch(e) {
+            console.warn('Erro ao restaurar sessão:', e);
+        }
     } else if (gerado === '1') {
         // Treino gerado pelo Claude — usar localStorage (mais fiável)
         var mdGerado = localStorage.getItem('treino_gerado_md');
@@ -1312,6 +1363,44 @@ function ajustarRondas(delta) {
     document.getElementById('cron-rondas').textContent = rondasWOD;
 }
 
+// ---- AUTOSAVE ----
+function autosave() {
+    try {
+        const nome = document.getElementById('sess-nome')?.value || '';
+        const data = document.getElementById('sess-data')?.value || '';
+        const notas = document.getElementById('sess-notas')?.value || '';
+
+        // Recolher exercícios actuais
+        const exRows = document.querySelectorAll('.ex-row');
+        const exercicios = [];
+        exRows.forEach(row => {
+            exercicios.push({
+                nome: row.querySelector('.ex-nome')?.value || '',
+                series: row.querySelector('.ex-series')?.value || '',
+                reps: row.querySelector('.ex-reps')?.value || '',
+                peso: row.querySelector('.ex-peso')?.value || '',
+                notas: row.querySelector('.ex-notas')?.value || ''
+            });
+        });
+
+        const estado = {
+            nome, data, notas,
+            planoMD: planoMD || '',
+            exercicios,
+            cronometroSegundos,
+            rondasWOD,
+            ts: Date.now()
+        };
+        localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(estado));
+    } catch(e) {
+        console.warn('autosave erro:', e);
+    }
+}
+
+function limparAutosave() {
+    localStorage.removeItem(AUTOSAVE_KEY);
+}
+
 // ---- GUARDAR ----
 async function guardarProgresso() {
     autosave();
@@ -1319,6 +1408,7 @@ async function guardarProgresso() {
 }
 
 async function terminarTreino() {
+    limparAutosave();
     await guardarSessaoCompleta(true);
 }
 

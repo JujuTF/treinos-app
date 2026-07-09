@@ -499,20 +499,28 @@ function construirMapaFases(ano, mes, ultimoDia) {
     // Para cada ciclo registado
     for (const ciclo of ciclos) {
         const inicioCiclo = new Date(ciclo.inicio + 'T00:00:00');
-        const fimPeriodo = ciclo.fim
-            ? new Date(ciclo.fim + 'T00:00:00')
-            : new Date(inicioCiclo.getTime() + 5 * 24*60*60*1000);
-
-        // Marcar dias do período
-        let d = new Date(inicioCiclo);
-        while (d <= fimPeriodo) {
-            const str = d.toISOString().split('T')[0];
-            mapa[str] = {
+        // Só pintar dias de período se fim estiver registado
+        // Se não houver fim, apenas marcar o dia de início como "em curso"
+        if (ciclo.fim) {
+            const fimPeriodo = new Date(ciclo.fim + 'T00:00:00');
+            let d = new Date(inicioCiclo);
+            while (d <= fimPeriodo) {
+                const str = d.toISOString().split('T')[0];
+                mapa[str] = {
+                    periodo: true,
+                    inicio: str === ciclo.inicio,
+                    fim: str === ciclo.fim
+                };
+                d = new Date(d.getTime() + 24*60*60*1000);
+            }
+        } else {
+            // Período em curso — só marcar início, sem assumir duração
+            mapa[ciclo.inicio] = {
                 periodo: true,
-                inicio: str === ciclo.inicio,
-                fim: ciclo.fim && str === ciclo.fim
+                inicio: true,
+                fim: false,
+                emCurso: true
             };
-            d = new Date(d.getTime() + 24*60*60*1000);
         }
 
         // Marcar fases do ciclo (folicular, ovulação, lútea)

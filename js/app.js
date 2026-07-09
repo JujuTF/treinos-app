@@ -234,9 +234,44 @@ async function guardarDiario() {
 // TREINO DE HOJE — CARD DINÂMICO
 // ============================================
 
+const AUTOSAVE_KEY = 'treinos_sessao_ativa';
+
 async function carregarTreinoHoje() {
     const container = document.getElementById('treino-hoje-card');
     if (!container) return;
+
+    // Verificar se há sessão em curso no localStorage
+    try {
+        const raw = localStorage.getItem(AUTOSAVE_KEY);
+        if (raw) {
+            const estado = JSON.parse(raw);
+            // Válida se < 12h
+            if (Date.now() - estado.ts < 12 * 60 * 60 * 1000 && estado.nome) {
+                const horaGuardada = new Date(estado.ts).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+                container.innerHTML = `
+                    <div class="card" style="border-left: 4px solid var(--laranja);">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                            <div>
+                                <div style="font-weight:700; font-size:1rem; color:var(--azul-escuro);">⏸ ${estado.nome}</div>
+                                <div style="font-size:0.78rem; color:var(--cinza-meio); margin-top:2px;">Sessão em curso · guardada às ${horaGuardada}</div>
+                            </div>
+                            <span class="badge badge-laranja">Em curso</span>
+                        </div>
+                        <div style="display:flex; gap:8px;">
+                            <a href="sessao.html?continuar=1" class="btn btn-primario" style="flex:2; justify-content:center; font-size:0.85rem;">
+                                ▶ Continuar treino
+                            </a>
+                            <button onclick="descartarSessaoAtiva()" class="btn btn-secundario" style="flex:1; font-size:0.82rem;">
+                                Descartar
+                            </button>
+                        </div>
+                    </div>`;
+                return; // não continuar a verificar BD
+            } else {
+                localStorage.removeItem(AUTOSAVE_KEY);
+            }
+        }
+    } catch(e) { /* ignorar */ }
 
     try {
         // Tentar usar o ID da última sessão guardada (mais fiável logo após guardar)
@@ -297,17 +332,28 @@ async function carregarTreinoHoje() {
                     </div>
                 </div>`;
         } else {
+            // Sem treino hoje — mostrar botão de iniciar e o botão de gerar com Claude
             container.innerHTML = `
                 <a href="sessao.html" class="btn btn-primario" style="font-size:1rem; padding:16px 20px;">
                     🏋️ Iniciar treino de hoje
                 </a>`;
+            const wrap = document.getElementById('btn-gerar-wrap');
+            if (wrap) wrap.style.display = 'block';
         }
     } catch(e) {
         container.innerHTML = `
             <a href="sessao.html" class="btn btn-primario" style="font-size:1rem; padding:16px 20px;">
                 🏋️ Iniciar treino de hoje
             </a>`;
+        const wrap = document.getElementById('btn-gerar-wrap');
+        if (wrap) wrap.style.display = 'block';
     }
+}
+
+function descartarSessaoAtiva() {
+    localStorage.removeItem(AUTOSAVE_KEY);
+    carregarTreinoHoje();
+    mostrarToast('Sessão descartada');
 }
 
 // ============================================
