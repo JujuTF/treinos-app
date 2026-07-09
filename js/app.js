@@ -297,10 +297,10 @@ async function carregarTreinoHoje() {
                     </div>
                 </div>`;
         } else {
-            container.innerHTML = '';
-        // Mostrar botão gerar treino
-        const wrap = document.getElementById('btn-gerar-wrap');
-        if (wrap) wrap.style.display = 'block';
+            container.innerHTML = `
+                <a href="sessao.html" class="btn btn-primario" style="font-size:1rem; padding:16px 20px;">
+                    🏋️ Iniciar treino de hoje
+                </a>`;
         }
     } catch(e) {
         container.innerHTML = `
@@ -721,81 +721,6 @@ async function guardarMetricas() {
 }
 
 // ============================================
-// CLAUDE — GERAR TREINO E ANALISAR
-// ============================================
-
-const WORKER_URL = 'https://treinos-claude.jujutfigueiredo.workers.dev';
-
-async function gerarTreinoHoje() {
-    const btn = document.getElementById('btn-gerar-treino');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ A gerar...'; }
-
-    try {
-        // Recolher estado do dia
-        const hoje = new Date().toISOString().split('T')[0];
-
-        const [{ data: registo }, { data: ciclos }, { data: ultimaSessao }] = await Promise.all([
-            db.from('registo_diario').select('*').eq('data', hoje).limit(1),
-            db.from('ciclo_menstrual').select('*').order('inicio', { ascending: false }).limit(1),
-            db.from('sessoes_treino').select('nome_treino, data, tipo').order('data', { ascending: false }).limit(1)
-        ]);
-
-        const reg = registo && registo.length > 0 ? registo[0] : {};
-
-        // Calcular fase do ciclo
-        let fase_ciclo = 'não disponível';
-        let dia_ciclo = null;
-        if (ciclos && ciclos.length > 0) {
-            const inicio = new Date(ciclos[0].inicio + 'T00:00:00');
-            dia_ciclo = Math.floor((new Date() - inicio) / (1000*60*60*24)) + 1;
-            const fases = [
-                { nome: 'Menstrual', dias: [1,5] },
-                { nome: 'Folicular', dias: [6,13] },
-                { nome: 'Ovulação', dias: [14,16] },
-                { nome: 'Lútea', dias: [17,35] }
-            ];
-            for (const f of fases) {
-                if (dia_ciclo >= f.dias[0] && dia_ciclo <= f.dias[1]) { fase_ciclo = f.nome; break; }
-            }
-        }
-
-        const dados = {
-            energia: reg.energia || null,
-            horas_sono: reg.horas_sono || null,
-            flare: reg.flare_fibromialgia || false,
-            agua_ml: reg.agua_ml || 0,
-            meta_agua_ml: reg.meta_agua_ml || 2000,
-            fase_ciclo,
-            dia_ciclo,
-            ultimo_treino: ultimaSessao && ultimaSessao.length > 0
-                ? ultimaSessao[0].nome_treino + ' (' + ultimaSessao[0].data + ')'
-                : null,
-            notas_extra: reg.notas || null
-        };
-
-        const response = await fetch(WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tipo: 'gerar_treino', dados })
-        });
-
-        const result = await response.json();
-
-        if (result.error) throw new Error(result.error);
-
-        // Guardar o MD gerado temporariamente e ir para a sessão
-        sessionStorage.setItem('treino_gerado_md', result.texto);
-        sessionStorage.setItem('treino_gerado_data', hoje);
-        window.location.href = 'sessao.html?gerado=1';
-
-    } catch (e) {
-        console.error(e);
-        mostrarToast('Erro ao gerar treino 😕');
-        if (btn) { btn.disabled = false; btn.textContent = '⚡ Gerar treino de hoje'; }
-    }
-}
-
-// ============================================
 // CICLO MENSTRUAL
 // ============================================
 
@@ -866,5 +791,80 @@ async function guardarCiclo() {
         fecharModal('modal-ciclo');
         await carregarCiclo();
         await carregarCicloResumido();
+    }
+}
+// ============================================
+// CLAUDE — GERAR TREINO
+// ============================================
+
+const WORKER_URL = 'https://treinos-claude.jujutfigueiredo.workers.dev';
+
+async function gerarTreinoHoje() {
+    var btn = document.getElementById('btn-gerar-treino');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ A gerar treino...'; }
+
+    try {
+        var hojeStr = hoje();
+
+        var results = await Promise.all([
+            db.from('registo_diario').select('*').eq('data', hojeStr).limit(1),
+            db.from('ciclo_menstrual').select('*').order('inicio', { ascending: false }).limit(1),
+            db.from('sessoes_treino').select('nome_treino, data, tipo').order('data', { ascending: false }).limit(1)
+        ]);
+
+        var reg = results[0].data && results[0].data.length > 0 ? results[0].data[0] : {};
+        var ciclos = results[1].data || [];
+        var ultimaSessao = results[2].data || [];
+
+        var fase_ciclo = 'não disponível';
+        var dia_ciclo = null;
+        if (ciclos.length > 0) {
+            var inicio = new Date(ciclos[0].inicio + 'T00:00:00');
+            dia_ciclo = Math.floor((new Date() - inicio) / (1000*60*60*24)) + 1;
+            var fases = [
+                { nome: 'Menstrual', d: [1,5] },
+                { nome: 'Folicular', d: [6,13] },
+                { nome: 'Ovulação', d: [14,16] },
+                { nome: 'Lútea', d: [17,35] }
+            ];
+            for (var i = 0; i < fases.length; i++) {
+                if (dia_ciclo >= fases[i].d[0] && dia_ciclo <= fases[i].d[1]) {
+                    fase_ciclo = fases[i].nome; break;
+                }
+            }
+        }
+
+        var dados = {
+            energia: reg.energia || null,
+            horas_sono: reg.horas_sono || null,
+            flare: reg.flare_fibromialgia || false,
+            agua_ml: reg.agua_ml || 0,
+            meta_agua_ml: reg.meta_agua_ml || 2000,
+            fase_ciclo: fase_ciclo,
+            dia_ciclo: dia_ciclo,
+            ultimo_treino: ultimaSessao.length > 0
+                ? ultimaSessao[0].nome_treino + ' (' + ultimaSessao[0].data + ')'
+                : null,
+            notas_extra: reg.notas || null
+        };
+
+        var response = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: 'gerar_treino', dados: dados })
+        });
+
+        var result = await response.json();
+        if (result.error) throw new Error(result.error);
+
+        // Usar localStorage (mais persistente que sessionStorage)
+        localStorage.setItem('treino_gerado_md', result.texto);
+        localStorage.setItem('treino_gerado_data', hojeStr);
+        window.location.href = 'sessao.html?gerado=1';
+
+    } catch(e) {
+        console.error(e);
+        mostrarToast('Erro ao gerar treino 😕');
+        if (btn) { btn.disabled = false; btn.textContent = '⚡ Gerar treino de hoje com Claude'; }
     }
 }

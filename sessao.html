@@ -427,20 +427,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sessaoId) {
         await verDetalhesSessao(sessaoId);
     } else if (gerado === '1') {
-        // Treino gerado pelo Claude — carregar automaticamente
-        const mdGerado = sessionStorage.getItem('treino_gerado_md');
-        const dataGerado = sessionStorage.getItem('treino_gerado_data');
+        // Treino gerado pelo Claude — usar localStorage (mais fiável)
+        var mdGerado = localStorage.getItem('treino_gerado_md');
+        var dataGerado = localStorage.getItem('treino_gerado_data');
         if (mdGerado) {
-            sessionStorage.removeItem('treino_gerado_md');
+            localStorage.removeItem('treino_gerado_md');
+            localStorage.removeItem('treino_gerado_data');
             planoMD = mdGerado;
             // Auto-preencher nome a partir do MD
-            const matchNome = mdGerado.match(/^#\s+(.+)/m);
+            var matchNome = mdGerado.match(/^#\s+(.+)/m);
             if (matchNome) {
                 document.getElementById('sess-nome').value = matchNome[1].replace(/[🔴🔵🟡🟢]/g, '').trim();
             }
             if (dataGerado) document.getElementById('sess-data').value = dataGerado;
             mostrarToast('Treino gerado pelo Claude ✓');
             await iniciarTreino();
+        } else {
+            mostrarToast('Sem treino gerado — carrega o ficheiro .md');
         }
     }
 });
