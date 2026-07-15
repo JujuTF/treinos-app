@@ -821,8 +821,9 @@ function parsearMD(md) {
         // Bloco (## )
         if (linha.startsWith('## ')) {
             if (blocoAtual) blocos.push(blocoAtual);
+            const tituloRaw = linha.replace('## ', '').replace(/[🔴🔵🟡🟢⚙️]/g, '').trim();
             blocoAtual = {
-                titulo: linha.replace('## ', '').replace(/[🔴🔵🟡🟢⚙️]/g, '').trim(),
+                titulo: tituloRaw.replace(/\*\*/g, '').trim(),
                 subtitulo: '',
                 tipo: 'normal',
                 rondas: null,
@@ -832,11 +833,19 @@ function parsearMD(md) {
                 texto: []
             };
 
+            // Extrair rondas do título: "2 rounds", "3 rondas"
+            const rondasTitulo = tituloRaw.match(/(\d+)\s*r(?:ound|onda)/i);
+            if (rondasTitulo) blocoAtual.rondas = parseInt(rondasTitulo[1]);
+
+            // Extrair peso do título: "**8 kg**", "8kg", "8 kg"
+            const pesoTitulo = tituloRaw.match(/\*\*(\d+(?:[.,]\d+)?)\s*kg\*\*|(\d+(?:[.,]\d+)?)\s*kg/i);
+            if (pesoTitulo) blocoAtual.peso_bloco = (pesoTitulo[1] || pesoTitulo[2]) + 'kg';
+
             // Detectar tipo
             const t = blocoAtual.titulo.toLowerCase();
             if (t.includes('wod') || t.includes('amrap') || t.includes('emom')) blocoAtual.tipo = 'wod';
-            if (t.includes('warm') || t.includes('aquecimento')) blocoAtual.tipo = 'warmup';
-            if (t.includes('pélvico') || t.includes('core') || t.includes('finisher')) blocoAtual.tipo = 'finisher';
+            if (t.includes('warm') || t.includes('aquecimento') || t.includes('pélvico')) blocoAtual.tipo = 'warmup';
+            if (t.includes('finisher')) blocoAtual.tipo = 'finisher';
             if (t.includes('troca')) blocoAtual.tipo = 'info';
 
             emTabela = false;
@@ -933,8 +942,10 @@ function parsearMD(md) {
                         else if (pesoCell.match(/^\d/)) ex.peso_plano = pesoCell;
                     }
 
-                    // Fallback: peso do bloco
-                    if (!ex.peso_plano && blocoAtual.peso_bloco) ex.peso_plano = blocoAtual.peso_bloco;
+                    // Fallback: peso do bloco (preenchido como sugestão)
+                    if (!ex.peso_plano && blocoAtual.peso_bloco) {
+                        ex.peso_plano = blocoAtual.peso_bloco.replace('kg','').trim();
+                    }
 
                     // Extrair peso inline do campo reps ou notas (ex: "12 reps a 8kg")
                     if (!ex.peso_plano) {
@@ -1244,7 +1255,7 @@ function renderExercicio(bi, ei, ex, ronda) {
             <div class="exercicio-registo">
                 <div class="registo-campo">
                     <label>Peso${anterior.peso_kg && ronda <= 1 ? ' <span style="color:var(--verde);font-size:0.65rem;">↩</span>' : ''}</label>
-                    <input type="text" id="peso-${id}" value="${ronda <= 1 ? pesoValor : ''}" placeholder="${ex.peso_plano || 'kg'}"
+                    <input type="text" id="peso-${id}" value="${ronda <= 1 ? (pesoValor || ex.peso_plano || '') : ''}" placeholder="kg"
                         oninput="autoFeito('${id}')">
                 </div>
                 <div class="registo-campo">
