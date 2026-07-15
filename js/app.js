@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarDiaHoje();
     await carregarWidgets();
     await carregarCicloResumido();
+    carregarCoach(); // não bloqueia — corre em background
     await carregarSessoes();
     await carregarMetricas();
     await carregarCiclo();
