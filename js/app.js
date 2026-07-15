@@ -591,13 +591,15 @@ async function carregarCoach() {
     try {
         const hojeStr = hoje();
 
-        const [{ data: sessoes }, { data: regDia }, { data: pesos }, { data: ciclos }, { data: ultSessoes }] = await Promise.all([
+        const [r1, r2, r3, r4, r5] = await Promise.all([
             db.from('sessoes_treino').select('data, nome_treino').order('data', { ascending: false }).limit(3),
             db.from('registo_diario').select('*').eq('data', hojeStr).limit(1),
             db.from('metricas_corporais').select('data, peso_kg').order('data', { ascending: false }).limit(1),
             db.from('ciclo_menstrual').select('*').order('inicio', { ascending: false }).limit(1),
             db.from('sessoes_treino').select('nome_treino, data, notas').order('data', { ascending: false }).limit(5)
         ]);
+        const sessoes = r1.data, regDia = r2.data, pesos = r3.data, ciclos = r4.data, ultSessoes = r5.data;
+        console.log('Coach dados:', { sessoes, regDia, pesos, ciclos });
 
         const ultimoTreino = sessoes && sessoes.length > 0 ? sessoes[0] : null;
         const diasSemTreino = ultimoTreino
@@ -671,8 +673,10 @@ async function carregarCoach() {
         mostrarMensagemCoach(container, mensagem, acao, label);
 
     } catch(e) {
-        console.warn('Coach AI falhou:', e);
-        container.style.display = 'none';
+        console.error('Coach AI falhou:', e);
+        // não esconder — mostrar mensagem de fallback
+        container.innerHTML = '<div style="font-size:0.85rem;color:var(--cinza-meio);">Coach indisponível</div>';
+        container.classList.add('visivel');
     }
 }
 
