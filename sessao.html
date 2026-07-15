@@ -330,6 +330,10 @@
             </div>
             <input type="file" id="file-input" accept=".md,.txt" style="display:none" onchange="lerFicheiro(this)">
 
+            <button class="btn btn-primario" style="width:100%; margin-top:12px; justify-content:center; font-size:0.95rem;" onclick="abrirModalGerarSessao()">
+                ⚡ Gerar com Claude
+            </button>
+
             <div style="margin-top:12px; text-align:center; color:var(--cinza-meio); font-size:0.82rem;">ou</div>
 
             <button class="btn btn-secundario" style="width:100%; margin-top:10px; justify-content:center;" onclick="semPlano()">
@@ -1755,7 +1759,155 @@ async function guardarSugestoesAnalise(sessaoId) {
     else { mostrarToast('Sugestões guardadas ✓'); }
 }
 
+
+
+// ---- GERAR TREINO A PARTIR DE SESSAO.HTML ----
+const WORKER_URL_SESSAO = 'https://treinos-claude.jujutfigueiredo.workers.dev';
+
+function abrirModalGerarSessao() {
+    document.getElementById('modal-gerar-sessao').classList.add('open');
+}
+
+function selecionarTipoTreino(btn) {
+    document.querySelectorAll('.tipo-treino-btn').forEach(b => b.classList.remove('btn-primario'));
+    btn.classList.add('btn-primario');
+}
+
+function selecionarIntensidade(btn) {
+    document.querySelectorAll('.intensidade-btn').forEach(b => b.classList.remove('btn-primario'));
+    btn.classList.add('btn-primario');
+}
+
+function selecionarTempoSessao(btn) {
+    document.querySelectorAll('.tempo-sessao-btn').forEach(b => b.classList.remove('btn-primario'));
+    btn.classList.add('btn-primario');
+    const input = document.getElementById('gerar-sessao-tempo-custom');
+    if (input) input.value = btn.dataset.min;
+}
+
+async function confirmarGerarSessao() {
+    const tipoBtn = document.querySelector('.tipo-treino-btn.btn-primario');
+    const intensBtn = document.querySelector('.intensidade-btn.btn-primario');
+    const tempoInput = document.getElementById('gerar-sessao-tempo-custom');
+    const notasInput = document.getElementById('gerar-sessao-notas');
+
+    const tempo = tempoInput ? parseInt(tempoInput.value) || null : null;
+    if (!tempo) { mostrarToast('Indica o tempo disponível'); return; }
+
+    const tipo = tipoBtn ? tipoBtn.dataset.tipo : 'automatico';
+    const intensidade = intensBtn ? intensBtn.dataset.val : 'moderado';
+    const notas = notasInput ? notasInput.value.trim() : '';
+
+    fecharModal('modal-gerar-sessao');
+
+    const btn = document.getElementById('btn-confirmar-gerar-sessao');
+    mostrarToast('⏳ A gerar treino...');
+
+    try {
+        // Obter dados do dia do Supabase
+        const { data: { user } } = await db.auth.getUser();
+        const hoje = new Date().toISOString().split('T')[0];
+        const { data: reg } = await db.from('diario').select('*').eq('user_id', user.id).eq('data', hoje).limit(1);
+        const regHoje = (reg && reg.length > 0) ? reg[0] : {};
+
+        const dados = {
+            energia: regHoje.energia || null,
+            horas_sono: regHoje.horas_sono || null,
+            flare: regHoje.flare_fibromialgia || false,
+            agua_ml: regHoje.agua_ml || 0,
+            meta_agua_ml: 2000,
+            fase_ciclo: null,
+            dia_ciclo: null,
+            ultimo_treino: null,
+            tempo_disponivel_min: tempo,
+            tipo_treino: tipo,
+            intensidade: intensidade,
+            notas_extra: notas
+        };
+
+        const response = await fetch(WORKER_URL_SESSAO, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: 'gerar_treino', dados })
+        });
+
+        const result = await response.json();
+        if (result.error) throw new Error(result.error);
+
+        // LOG TEMPORÁRIO — ver markdown gerado
+        console.log('=== MARKDOWN GERADO ===');
+        console.log(result.texto);
+        console.log('=== FIM MARKDOWN ===');
+
+        planoMD = result.texto;
+        localStorage.setItem('treino_gerado_md', result.texto);
+
+        // Preencher nome se vazio
+        const nomeInput = document.getElementById('sess-nome');
+        if (nomeInput && !nomeInput.value) {
+            const primeiraLinha = result.texto.split('\n').find(l => l.startsWith('# '));
+            if (primeiraLinha) nomeInput.value = primeiraLinha.replace('# ', '').trim();
+        }
+
+        await iniciarTreino();
+        mostrarToast('Treino gerado ✓');
+
+    } catch(e) {
+        mostrarToast('Erro ao gerar treino: ' + e.message);
+        console.error(e);
+    }
+}
+
 </script>
+
+<!-- MODAL — GERAR TREINO (sessao.html) -->
+<div class="modal-overlay" id="modal-gerar-sessao">
+    <div class="modal">
+        <div class="modal-titulo">⚡ Gerar treino com Claude</div>
+
+        <div class="form-grupo">
+            <label>Tipo de treino</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-secundario tipo-treino-btn" data-tipo="automatico" style="flex:1;" onclick="selecionarTipoTreino(this)">🤖 Auto</button>
+                <button class="btn btn-secundario tipo-treino-btn" data-tipo="mobilidade" style="flex:1;" onclick="selecionarTipoTreino(this)">🟢 Mobilidade</button>
+                <button class="btn btn-secundario tipo-treino-btn" data-tipo="forca_curta" style="flex:1;" onclick="selecionarTipoTreino(this)">🔵 Força Curta</button>
+                <button class="btn btn-secundario tipo-treino-btn" data-tipo="completo" style="flex:1;" onclick="selecionarTipoTreino(this)">🔴 Completo</button>
+                <button class="btn btn-secundario tipo-treino-btn" data-tipo="cardio_core" style="flex:1;" onclick="selecionarTipoTreino(this)">🟡 Cardio+Core</button>
+            </div>
+        </div>
+
+        <div class="form-grupo">
+            <label>Intensidade</label>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-secundario intensidade-btn" data-val="leve" style="flex:1;" onclick="selecionarIntensidade(this)">🌿 Leve</button>
+                <button class="btn btn-secundario intensidade-btn" data-val="moderado" style="flex:1;" onclick="selecionarIntensidade(this)">💪 Moderado</button>
+                <button class="btn btn-secundario intensidade-btn" data-val="intenso" style="flex:1;" onclick="selecionarIntensidade(this)">🔥 Intenso</button>
+            </div>
+        </div>
+
+        <div class="form-grupo">
+            <label>Tempo disponível</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-secundario tempo-sessao-btn" data-min="20" style="flex:1;" onclick="selecionarTempoSessao(this)">20 min</button>
+                <button class="btn btn-secundario tempo-sessao-btn" data-min="30" style="flex:1;" onclick="selecionarTempoSessao(this)">30 min</button>
+                <button class="btn btn-secundario tempo-sessao-btn" data-min="45" style="flex:1;" onclick="selecionarTempoSessao(this)">45 min</button>
+                <button class="btn btn-secundario tempo-sessao-btn" data-min="60" style="flex:1;" onclick="selecionarTempoSessao(this)">60 min</button>
+            </div>
+            <input type="number" id="gerar-sessao-tempo-custom" min="10" max="180" placeholder="ou escreve (min)"
+                style="width:100%; margin-top:8px; padding:10px 14px; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); font-family:'DM Sans',sans-serif; font-size:0.95rem;">
+        </div>
+
+        <div class="form-grupo">
+            <label>Notas para o Claude <span style="font-weight:400; text-transform:none;">(opcional)</span></label>
+            <textarea id="gerar-sessao-notas" placeholder="ex: quero focar em glúteos, tenho 10 min a menos..." style="min-height:60px;"></textarea>
+        </div>
+
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-secundario" style="flex:1;" onclick="fecharModal('modal-gerar-sessao')">Cancelar</button>
+            <button class="btn btn-primario" style="flex:2;" id="btn-confirmar-gerar-sessao" onclick="confirmarGerarSessao()">Gerar treino ⚡</button>
+        </div>
+    </div>
+</div>
+
 </body>
-</html> 
- 
+</html>
