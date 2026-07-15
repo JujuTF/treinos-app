@@ -1798,7 +1798,7 @@ async function confirmarGerarSessao() {
     const intensidade = intensBtn ? intensBtn.dataset.val : 'moderado';
     const notas = notasInput ? notasInput.value.trim() : '';
 
-    fecharModal('modal-gerar-sessao');
+    document.getElementById('modal-gerar-sessao').classList.remove('open');
 
     const btn = document.getElementById('btn-confirmar-gerar-sessao');
     mostrarToast('⏳ A gerar treino...');
@@ -1903,12 +1903,11 @@ async function confirmarGerarSessao() {
         </div>
 
         <div style="display:flex; gap:10px;">
-            <button class="btn btn-secundario" style="flex:1;" onclick="fecharModal('modal-gerar-sessao')">Cancelar</button>
+            <button class="btn btn-secundario" style="flex:1;" onclick="document.getElementById('modal-gerar-sessao').classList.remove('open')">Cancelar</button>
             <button class="btn btn-primario" style="flex:2;" id="btn-confirmar-gerar-sessao" onclick="confirmarGerarSessao()">Gerar treino ⚡</button>
         </div>
     </div>
 </div>
 
 </body>
-</html> 
- 
+</html>
