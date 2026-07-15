@@ -1850,9 +1850,8 @@ async function confirmarGerarSessao() {
         // Obter dados do dia do Supabase (ignorar erro se tabela não existir)
         let regHoje = {};
         try {
-            const { data: { user } } = await db.auth.getUser();
             const hoje = new Date().toISOString().split('T')[0];
-            const { data: reg } = await db.from('registo_diario').select('*').eq('user_id', user.id).eq('data', hoje).limit(1);
+            const { data: reg } = await db.from('registo_diario').select('*').eq('data', hoje).limit(1);
             if (reg && reg.length > 0) regHoje = reg[0];
         } catch(e) { /* sem dados do dia — continuar na mesma */ }
 
