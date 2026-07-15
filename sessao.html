@@ -886,7 +886,6 @@ function parsearMD(md) {
             // Linha de dados
             if (tabelaAtual && cells.length > 0) {
                 const row = cells.map(c => c.trim());
-                // Primeira coluna é o exercício
                 if (row[0] && !row[0].match(/^-+$/)) {
                     tabelaAtual.rows.push(row);
                 }
@@ -895,22 +894,55 @@ function parsearMD(md) {
         } else {
             // Fim de tabela — converter em exercícios
             if (emTabela && tabelaAtual && tabelaAtual.rows.length > 0) {
+                // Mapear colunas pelo header (insensível a maiúsculas)
+                const hdrs = tabelaAtual.headers.map(h => h.toLowerCase().replace(/[*_]/g, '').trim());
+
+                // Encontrar índices das colunas relevantes
+                const iNome  = hdrs.findIndex(h => h.includes('exerc') || h.includes('exercí'));
+                const iReps  = hdrs.findIndex(h => h.includes('rep') || h.includes('sér') || h.includes('ser') || h.includes('dura') || h.includes('tempo') || h.includes('séries'));
+                const iPeso  = hdrs.findIndex(h => h.includes('peso') || h.includes('carga') || h.includes('kg'));
+                const iNotas = hdrs.findIndex(h => h.includes('nota') || h.includes('obs') || h.includes('detalh') || h.includes('técn'));
+
                 for (const row of tabelaAtual.rows) {
+                    // Se não há coluna de exercício identificada, primeira coluna não-numérica é o nome
+                    let nomeIdx = iNome >= 0 ? iNome : -1;
+                    if (nomeIdx < 0) {
+                        // Procurar primeira célula que não seja número nem vazia
+                        nomeIdx = row.findIndex(c => c && !c.match(/^\d+$/) && c.length > 1);
+                    }
+
+                    const nome = nomeIdx >= 0 ? row[nomeIdx] : row[0] || '';
+                    // Limpar markdown bold/italic do nome
+                    const nomeLimpo = nome.replace(/\*\*/g, '').replace(/\*/g, '').trim();
+
+                    if (!nomeLimpo || nomeLimpo.length <= 1) continue;
+
                     const ex = {
-                        nome: row[0] || '',
-                        reps: row[1] || '',
-                        notas: row[2] || '',
+                        nome: nomeLimpo,
+                        reps: iReps >= 0 && iReps < row.length ? row[iReps] : (iNome >= 0 && iNome + 1 < row.length ? row[iNome + 1] : ''),
+                        notas: iNotas >= 0 && iNotas < row.length ? row[iNotas] : '',
                         peso_plano: '',
                         feito: false
                     };
 
-                    // peso_plano como sugestão do plano (placeholder apenas)
-                    if (blocoAtual.peso_bloco) ex.peso_plano = blocoAtual.peso_bloco;
-                    // Não herdar peso automaticamente — utilizador preenche
-
-                    if (ex.nome && ex.nome.length > 1) {
-                        blocoAtual.exercicios.push(ex);
+                    // Peso da coluna da tabela (se existir)
+                    if (iPeso >= 0 && iPeso < row.length && row[iPeso]) {
+                        const pesoCell = row[iPeso];
+                        const pesoMatch = pesoCell.match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+                        if (pesoMatch) ex.peso_plano = pesoMatch[1] + 'kg';
+                        else if (pesoCell.match(/^\d/)) ex.peso_plano = pesoCell;
                     }
+
+                    // Fallback: peso do bloco
+                    if (!ex.peso_plano && blocoAtual.peso_bloco) ex.peso_plano = blocoAtual.peso_bloco;
+
+                    // Extrair peso inline do campo reps ou notas (ex: "12 reps a 8kg")
+                    if (!ex.peso_plano) {
+                        const inlineMatch = (ex.reps + ' ' + ex.notas).match(/(\d+(?:[.,]\d+)?)\s*kg/i);
+                        if (inlineMatch) ex.peso_plano = inlineMatch[1] + 'kg';
+                    }
+
+                    blocoAtual.exercicios.push(ex);
                 }
                 emTabela = false;
                 tabelaAtual = null;
@@ -1804,11 +1836,14 @@ async function confirmarGerarSessao() {
     mostrarToast('⏳ A gerar treino...');
 
     try {
-        // Obter dados do dia do Supabase
-        const { data: { user } } = await db.auth.getUser();
-        const hoje = new Date().toISOString().split('T')[0];
-        const { data: reg } = await db.from('diario').select('*').eq('user_id', user.id).eq('data', hoje).limit(1);
-        const regHoje = (reg && reg.length > 0) ? reg[0] : {};
+        // Obter dados do dia do Supabase (ignorar erro se tabela não existir)
+        let regHoje = {};
+        try {
+            const { data: { user } } = await db.auth.getUser();
+            const hoje = new Date().toISOString().split('T')[0];
+            const { data: reg } = await db.from('registo_diario').select('*').eq('user_id', user.id).eq('data', hoje).limit(1);
+            if (reg && reg.length > 0) regHoje = reg[0];
+        } catch(e) { /* sem dados do dia — continuar na mesma */ }
 
         const dados = {
             energia: regHoje.energia || null,
