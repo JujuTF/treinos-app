@@ -698,67 +698,79 @@ ${s.sugestoes_claude}
 
     const planoEl = document.getElementById('plano-conteudo');
 
-    // Card de análise Claude
-    var analiseDiv = document.createElement('div');
-    analiseDiv.className = 'card';
-    analiseDiv.id = 'card-analise-claude';
-    var resumoEscapado = texto.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    // Card análise Claude — usa data attribute para evitar escape de caracteres no onclick
+    const analiseCard = document.createElement('div');
+    analiseCard.className = 'card';
+    analiseCard.id = 'card-analise-claude';
+    analiseCard.dataset.sessaoId = s.id;
+    analiseCard.dataset.resumo = texto;
 
     if (s.sugestoes_claude) {
-        analiseDiv.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+        analiseCard.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
             + '<div class="card-titulo" style="margin-bottom:0;">🤖 Análise do Claude</div>'
-            + '<button onclick="regenerarAnalise(\'' + s.id + '\', \'' + resumoEscapado + '\')" style="background:none;border:none;color:var(--cinza-meio);font-size:0.78rem;cursor:pointer;">↻ Regenerar</button>'
+            + '<button onclick="regenerarAnaliseCard(this)" style="background:none;border:none;color:var(--cinza-meio);font-size:0.78rem;cursor:pointer;">↻ Regenerar</button>'
             + '</div>'
-            + '<div id="analise-conteudo" style="font-size:0.88rem;line-height:1.6;">' + formatarAnalise(s.sugestoes_claude) + '</div>';
+            + '<div style="font-size:0.88rem;line-height:1.6;">' + formatarAnalise(s.sugestoes_claude) + '</div>';
     } else {
-        analiseDiv.innerHTML = '<div class="card-titulo">🤖 Análise do Claude</div>'
+        analiseCard.innerHTML = '<div class="card-titulo">🤖 Análise do Claude</div>'
             + '<p style="font-size:0.85rem;color:var(--cinza-meio);margin-bottom:12px;">Ainda sem análise para esta sessão.</p>'
-            + '<button class="btn btn-primario" id="btn-analisar" onclick="regenerarAnalise(\'' + s.id + '\', \'' + resumoEscapado + '\')">'
-            + '⚡ Analisar com Claude</button>';
+            + '<button class="btn btn-primario" id="btn-analisar" onclick="regenerarAnaliseCard(this)">⚡ Analisar com Claude</button>';
     }
-    planoEl.appendChild(analiseDiv);
+    planoEl.appendChild(analiseCard);
 
-    // Card de texto copiável (colapsado)
-    var resumoDiv = document.createElement('div');
+    // Card resumo copiável (colapsado)
+    const resumoDiv = document.createElement('div');
     resumoDiv.className = 'card';
-    var taId = 'resumo-texto-' + s.id;
     resumoDiv.innerHTML = '<div class="card-titulo" style="cursor:pointer;" onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'\':\'none\'">📋 Texto para copiar ▾</div>'
         + '<div style="display:none;">'
-        + '<textarea id="resumo-texto" readonly style="width:100%;border:1.5px solid var(--cinza-borda);border-radius:var(--radius-sm);padding:10px;font-family:\'DM Mono\',monospace;font-size:0.78rem;resize:vertical;min-height:120px;color:var(--cinza-texto);background:var(--fundo);outline:none;">' + texto + '</textarea>'
+        + '<textarea id="resumo-texto" readonly style="width:100%;border:1.5px solid var(--cinza-borda);border-radius:var(--radius-sm);padding:10px;font-family:\'DM Mono\',monospace;font-size:0.78rem;resize:vertical;min-height:120px;color:var(--cinza-texto);background:var(--fundo);outline:none;">' + texto.replace(/</g,'&lt;') + '</textarea>'
         + '<button class="btn btn-secundario" style="width:100%;margin-top:8px;justify-content:center;" onclick="copiarResumo()">📋 Copiar</button>'
         + '</div>';
     planoEl.appendChild(resumoDiv);
 }
 
 function formatarAnalise(txt) {
+    if (!txt) return '';
     return txt
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/^## (.+)$/gm, '<h3 style="font-size:0.95rem;font-weight:700;color:var(--azul-escuro);margin:12px 0 6px;">$1</h3>')
-        .replace(/^### (.+)$/gm, '<h4 style="font-size:0.85rem;font-weight:700;color:var(--verde);margin:10px 0 4px;">$1</h4>')
-        .replace(/^\d+\. \*\*(.+?)\*\*(.*)$/gm, '<p style="margin:6px 0;"><strong>$1</strong>$2</p>')
-        .replace(/^- (.+)$/gm, '<li style="margin:3px 0 3px 16px;font-size:0.88rem;">$1</li>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n\n/g, '<br>');
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/^## (.+)$/gm,'<h3 style="font-size:0.95rem;font-weight:700;color:var(--azul-escuro);margin:12px 0 6px;">$1</h3>')
+        .replace(/^### (.+)$/gm,'<h4 style="font-size:0.85rem;font-weight:700;color:var(--verde);margin:10px 0 4px;">$1</h4>')
+        .replace(/^\d+\. \*\*(.+?)\*\*(.*)$/gm,'<p style="margin:6px 0;"><strong>$1</strong>$2</p>')
+        .replace(/^- (.+)$/gm,'<li style="margin:3px 0 3px 16px;font-size:0.88rem;">$1</li>')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\n\n/g,'<br>');
 }
 
+function regenerarAnaliseCard(btn) {
+    var card = btn.closest('#card-analise-claude');
+    if (!card) return;
+    analisarEGuardarCard(card.dataset.sessaoId, card.dataset.resumo, card);
+}
 
-async function regenerarAnalise(sessaoId, resumo) {
-    try { resumo = decodeURIComponent(resumo); } catch(e) {}
-    var card = document.getElementById('card-analise-claude');
+async function analisarEGuardarCard(sessaoId, resumo, card) {
     if (card) card.innerHTML = '<div class="card-titulo">🤖 Análise do Claude</div><p style="color:var(--cinza-meio);font-size:0.88rem;">⏳ A analisar com Claude...</p>';
-    var analise = await analisarEGuardar(sessaoId, resumo);
-    if (analise && card) {
-        var resumoEsc = resumo.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-        card.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
-            + '<div class="card-titulo" style="margin-bottom:0;">🤖 Análise do Claude</div>'
-            + '<button onclick="regenerarAnalise(\'' + sessaoId + '\', \'' + resumoEsc + '\')" style="background:none;border:none;color:var(--cinza-meio);font-size:0.78rem;cursor:pointer;">↻ Regenerar</button>'
-            + '</div>'
-            + '<div style="font-size:0.88rem;line-height:1.6;">' + formatarAnalise(analise) + '</div>';
+    try {
+        const response = await fetch('https://treinos-claude.jujutfigueiredo.workers.dev', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: 'analisar_treino', dados: { resumo } })
+        });
+        const result = await response.json();
+        if (result.error) throw new Error(result.error);
+        const analise = result.texto;
+        await db.from('sessoes_treino').update({ sugestoes_claude: analise }).eq('id', sessaoId);
+        if (card) {
+            card.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+                + '<div class="card-titulo" style="margin-bottom:0;">🤖 Análise do Claude</div>'
+                + '<button onclick="regenerarAnaliseCard(this)" style="background:none;border:none;color:var(--cinza-meio);font-size:0.78rem;cursor:pointer;">↻ Regenerar</button>'
+                + '</div>'
+                + '<div style="font-size:0.88rem;line-height:1.6;">' + formatarAnalise(analise) + '</div>';
+        }
         mostrarToast('Análise guardada ✓');
-    } else if (card) {
-        card.innerHTML = '<div class="card-titulo">🤖 Análise do Claude</div>'
-            + '<p style="color:#DC2626;font-size:0.85rem;">Erro ao analisar. Tenta de novo.</p>'
-            + '<button class="btn btn-primario" style="margin-top:8px;" onclick="regenerarAnalise(\''+sessaoId+'\',\''+encodeURIComponent(resumo||'')+'\')">↻ Tentar de novo</button>';
+    } catch(e) {
+        if (card) card.innerHTML = '<div class="card-titulo">🤖 Análise do Claude</div>'
+            + '<p style="color:#DC2626;font-size:0.85rem;">Erro: ' + e.message + '</p>'
+            + '<button class="btn btn-primario" style="margin-top:8px;" onclick="regenerarAnaliseCard(this)">↻ Tentar de novo</button>';
     }
 }
 
@@ -862,6 +874,7 @@ function parsearMD(md) {
     let emTabela = false;
     let emBloco = false;
     let avisoAtual = null;
+    let exBoldAtual = null; // exercício em formato bold+bullets
 
     for (let i = 0; i < linhas.length; i++) {
         const linha = linhas[i].trim();
@@ -873,7 +886,9 @@ function parsearMD(md) {
 
         // Bloco (## )
         if (linha.startsWith('## ')) {
-            if (blocoAtual) blocos.push(blocoAtual);
+            if (exBoldAtual) { blocoAtual.exercicios.push(exBoldAtual); exBoldAtual = null; }
+            if (exBoldAtual && blocoAtual) { blocoAtual.exercicios.push(exBoldAtual); exBoldAtual = null; }
+    if (blocoAtual) blocos.push(blocoAtual);
             const tituloRaw = linha.replace('## ', '').replace(/[🔴🔵🟡🟢⚙️]/g, '').trim();
             blocoAtual = {
                 titulo: tituloRaw.replace(/\*\*/g, '').trim(),
@@ -923,11 +938,54 @@ function parsearMD(md) {
 
         // Avisos (> texto)
         if (linha.startsWith('> ')) {
-            const texto = linha.replace('> ', '').replace(/\*\*/g, '');
-            if (!texto.startsWith('🎥')) {
-                blocoAtual.avisos.push(texto);
+            // Fechar exercício bold em curso se existir
+            if (exBoldAtual) { blocoAtual.exercicios.push(exBoldAtual); exBoldAtual = null; }
+            const textoAviso = linha.replace('> ', '').replace(/\*\*/g, '');
+            if (!textoAviso.startsWith('🎥')) {
+                blocoAtual.avisos.push(textoAviso);
             }
             continue;
+        }
+
+        // Exercício em formato bold numerado: "**1. Nome**" ou "**Nome**" isolado
+        const boldExMatch = linha.match(/^\*\*(?:\d+\.\s*)?([^*]+?)\*\*\s*(?:←.*)?$/);
+        if (boldExMatch && !linha.includes('|') && blocoAtual.tipo !== 'warmup') {
+            if (exBoldAtual) blocoAtual.exercicios.push(exBoldAtual);
+            const nomeEx = boldExMatch[1].replace(/🆕/g, '').trim();
+            if (nomeEx.length > 2) {
+                exBoldAtual = {
+                    nome: nomeEx,
+                    reps: '',
+                    notas: '',
+                    peso_plano: blocoAtual.peso_bloco ? blocoAtual.peso_bloco.replace('kg','').trim() : '',
+                    feito: false
+                };
+            }
+            continue;
+        }
+
+        // Bullet de exercício bold em curso: "-" ou "🎯"
+        if (exBoldAtual && (linha.startsWith('- ') || linha.startsWith('🎯') || linha.startsWith('📹'))) {
+            if (linha.startsWith('🎯')) {
+                // target muscle — ignorar
+            } else if (linha.startsWith('📹')) {
+                // link youtube — ignorar
+            } else {
+                const bulletTxt = linha.replace(/^- /, '').replace(/\*\*/g, '').trim();
+                // Se parece reps (ex: "10 reps", "3x10")
+                if (!exBoldAtual.reps && bulletTxt.match(/^\d+\s*(reps?|x\s*\d+|séries?|rounds?)/i)) {
+                    exBoldAtual.reps = bulletTxt;
+                } else if (!exBoldAtual.notas) {
+                    exBoldAtual.notas = bulletTxt;
+                }
+            }
+            continue;
+        }
+
+        // Linha vazia ou separador — fechar exercício bold em curso
+        if (exBoldAtual && (linha === '' || linha === '---')) {
+            blocoAtual.exercicios.push(exBoldAtual);
+            exBoldAtual = null;
         }
 
         // Tabela
@@ -1517,25 +1575,6 @@ async function terminarTreino() {
     await guardarSessaoCompleta(true);
 }
 
-async function analisarEGuardar(sessaoId, resumo) {
-    try {
-        const WORKER_URL = 'https://treinos-claude.jujutfigueiredo.workers.dev';
-        const response = await fetch(WORKER_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tipo: 'analisar_treino', dados: { resumo } })
-        });
-        const result = await response.json();
-        if (result.error) throw new Error(result.error);
-        const analise = result.texto;
-        await db.from('sessoes_treino').update({ sugestoes_claude: analise }).eq('id', sessaoId);
-        return analise;
-    } catch(e) {
-        console.warn('Análise automática falhou:', e);
-        return null;
-    }
-}
-
 async function guardarSessaoCompleta(mostrarResumo = false) {
     const nome = document.getElementById('sess-nome').value.trim() || 'Treino';
     const data = document.getElementById('sess-data').value;
@@ -1646,35 +1685,7 @@ async function guardarSessaoCompleta(mostrarResumo = false) {
     const benchmarkMsg = await atualizarBenchmarkAutomatico(nome, payload.tempo_wod, payload.rounds_completos, data);
 
     mostrarToast(benchmarkMsg ? `Sessão guardada · ${benchmarkMsg}` : 'Sessão guardada ✓');
-
-    // Gerar resumo para análise automática
-    const tempoStr = payload.tempo_wod
-        ? Math.floor(payload.tempo_wod/60) + ':' + String(payload.tempo_wod%60).padStart(2,'0')
-        : null;
-    let resumoAuto = '## Sessão de treino — ' + data + '\n';
-    resumoAuto += '**Treino:** ' + nome + '\n';
-    if (tempoStr) resumoAuto += '**Tempo WOD:** ' + tempoStr + '\n';
-    if (payload.rounds_completos) resumoAuto += '**Rondas:** ' + payload.rounds_completos + '\n';
-    if (notas) resumoAuto += '**Notas:** ' + notas + '\n';
-    if (exercicios.length > 0) {
-        resumoAuto += '\n### Exercícios\n';
-        exercicios.forEach(ex => {
-            resumoAuto += '- **' + ex.nome + '**';
-            if (ex.peso_kg) resumoAuto += ' — ' + ex.peso_kg + 'kg';
-            if (ex.reps) resumoAuto += ' x ' + ex.reps;
-            resumoAuto += '\n';
-        });
-    }
-
-    // Análise automática em background (não bloqueia o redirect)
-    if (sessao && sessao.id) {
-        mostrarToast('⏳ A analisar treino com Claude...');
-        analisarEGuardar(sessao.id, resumoAuto).then(analise => {
-            if (analise) mostrarToast('Análise guardada ✓');
-        });
-    }
-
-    setTimeout(() => window.location.href = 'index.html', 2500);
+    setTimeout(() => window.location.href = 'index.html', 1800);
 }
 
 async function atualizarBenchmarkAutomatico(nome, tempo_wod, rounds, data) {

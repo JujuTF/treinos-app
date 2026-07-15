@@ -497,3 +497,6 @@ body {
 /* Botão gerar treino — escondido por JS, mostrado com classe */
 #btn-gerar-wrap { display: none; }
 #btn-gerar-wrap.visivel { display: block !important; }
+/* Coach card */
+#coach-card { display: none; }
+#coach-card.visivel { display: block !important; }

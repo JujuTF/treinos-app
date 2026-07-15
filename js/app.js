@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarDiaHoje();
     await carregarWidgets();
     await carregarCicloResumido();
-    await carregarCoach();
     await carregarSessoes();
     await carregarMetricas();
     await carregarCiclo();
@@ -568,105 +567,128 @@ async function carregarCicloResumido() {
 }
 
 // ============================================
-// COACH MOTIVACIONAL
-// ============================================
-
-const COACH_WORKER_URL = 'https://treinos-claude.jujutfigueiredo.workers.dev';
+// COACH MOTIVACIONAL COM AI
+const COACH_CACHE_KEY = 'treinos_coach_cache';
+const COACH_CACHE_TTL = 4 * 60 * 60 * 1000; // 4 horas
 
 async function carregarCoach() {
     const container = document.getElementById('coach-card');
     if (!container) return;
 
+    // Mostrar cache enquanto carrega
     try {
-        // Recolher dados para o coach
-        const hoje = new Date().toISOString().split('T')[0];
+        const cached = localStorage.getItem(COACH_CACHE_KEY);
+        if (cached) {
+            const { msg, acao, label, ts } = JSON.parse(cached);
+            if (Date.now() - ts < COACH_CACHE_TTL) {
+                mostrarMensagemCoach(container, msg, acao, label);
+                return; // cache válida — não chama o Worker
+            }
+        }
+    } catch(e) {}
 
-        // Último treino
-        const { data: sessoes } = await db.from('sessoes_treino')
-            .select('data, nome_treino').order('data', { ascending: false }).limit(1);
+    // Recolher contexto
+    try {
+        const hojeStr = hoje();
+
+        const [{ data: sessoes }, { data: regDia }, { data: pesos }, { data: ciclos }, { data: ultSessoes }] = await Promise.all([
+            db.from('sessoes_treino').select('data, nome_treino').order('data', { ascending: false }).limit(3),
+            db.from('registo_diario').select('*').eq('data', hojeStr).limit(1),
+            db.from('metricas_corporais').select('data, peso_kg').order('data', { ascending: false }).limit(1),
+            db.from('ciclo_menstrual').select('*').order('inicio', { ascending: false }).limit(1),
+            db.from('sessoes_treino').select('nome_treino, data, notas').order('data', { ascending: false }).limit(5)
+        ]);
+
         const ultimoTreino = sessoes && sessoes.length > 0 ? sessoes[0] : null;
         const diasSemTreino = ultimoTreino
             ? Math.floor((new Date() - new Date(ultimoTreino.data + 'T00:00:00')) / 86400000)
             : 99;
 
-        // Dados do dia
-        const { data: regDia } = await db.from('registo_diario')
-            .select('*').eq('data', hoje).limit(1);
         const reg = regDia && regDia.length > 0 ? regDia[0] : {};
         const aguaAtual = reg.agua_ml || 0;
         const metaAgua = reg.meta_agua_ml || 2000;
         const pctAgua = Math.round(aguaAtual / metaAgua * 100);
+        const energia = reg.energia || null;
+        const sono = reg.horas_sono || null;
+        const flare = reg.flare_fibromialgia || false;
 
-        // Último peso
-        const { data: pesos } = await db.from('metricas_corporais')
-            .select('data').order('data', { ascending: false }).limit(1);
-        const diasSemPeso = pesos && pesos.length > 0
-            ? Math.floor((new Date() - new Date(pesos[0].data + 'T00:00:00')) / 86400000)
+        const ultimoPeso = pesos && pesos.length > 0 ? pesos[0] : null;
+        const diasSemPeso = ultimoPeso
+            ? Math.floor((new Date() - new Date(ultimoPeso.data + 'T00:00:00')) / 86400000)
             : 99;
 
-        // Ciclo
-        const { data: ciclos } = await db.from('ciclo_menstrual')
-            .select('*').order('inicio', { ascending: false }).limit(1);
-        const cicloAtual = ciclos && ciclos.length > 0 ? ciclos[0] : null;
-        let diasCiclo = null;
-        let faseNome = null;
-        if (cicloAtual) {
-            diasCiclo = Math.floor((new Date() - new Date(cicloAtual.inicio + 'T00:00:00')) / 86400000) + 1;
+        let diasCiclo = null, faseNome = null;
+        if (ciclos && ciclos.length > 0) {
+            diasCiclo = Math.floor((new Date() - new Date(ciclos[0].inicio + 'T00:00:00')) / 86400000) + 1;
             faseNome = calcularFase(diasCiclo)?.nome || null;
         }
 
-        // Construir mensagens do coach
-        const msgs = [];
+        const historicoTreinos = (ultSessoes || []).map(s => s.nome_treino + ' (' + s.data + ')').join(', ');
 
-        if (diasSemTreino >= 2 && diasSemTreino < 99) {
-            msgs.push({ tipo: 'treino', icon: '🏋️', msg: `${diasSemTreino} dias sem treinar. Que tal hoje?`, acao: 'sessao.html', label: 'Iniciar treino' });
-        } else if (diasSemTreino >= 99) {
-            msgs.push({ tipo: 'treino', icon: '🏋️', msg: 'Ainda sem treinos registados. Começa hoje!', acao: 'sessao.html', label: 'Primeiro treino' });
+        // Construir contexto para o Worker
+        const contexto = {
+            data_hoje: hojeStr,
+            energia: energia ? energia + '/5' : 'não registada',
+            horas_sono: sono ? sono + 'h' : 'não registado',
+            flare_fibromialgia: flare,
+            agua_ml: aguaAtual,
+            pct_agua: pctAgua + '%',
+            meta_agua_ml: metaAgua,
+            dias_sem_treinar: diasSemTreino,
+            ultimo_treino: ultimoTreino ? ultimoTreino.nome_treino + ' em ' + ultimoTreino.data : 'sem registos',
+            historico_recente: historicoTreinos || 'sem registos',
+            fase_ciclo: faseNome || 'desconhecida',
+            dia_ciclo: diasCiclo,
+            dias_sem_pesagem: diasSemPeso,
+            ultimo_peso_kg: ultimoPeso ? ultimoPeso.peso_kg + 'kg' : 'sem registo'
+        };
+
+        // Chamar Worker
+        const response = await fetch('https://treinos-claude.jujutfigueiredo.workers.dev', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: 'coach_diario', dados: contexto })
+        });
+        const result = await response.json();
+        if (result.error) throw new Error(result.error);
+
+        // Parsear resposta JSON do Worker
+        let coachData;
+        try {
+            coachData = JSON.parse(result.texto);
+        } catch(e) {
+            // Fallback se não vier JSON
+            coachData = { mensagem: result.texto, acao: null, label: null };
         }
 
-        if (pctAgua < 50) {
-            msgs.push({ tipo: 'agua', icon: '💧', msg: `Estás em ${aguaAtual}ml de ${metaAgua}ml. Bebe água agora.`, acao: null, label: null });
-        }
+        const { mensagem, acao, label } = coachData;
 
-        if (diasSemPeso >= 14) {
-            msgs.push({ tipo: 'peso', icon: '⚖️', msg: `Sem pesagem há ${diasSemPeso} dias. Altura de registar.`, acao: 'corpo.html', label: 'Registar métricas' });
-        }
+        // Guardar cache
+        localStorage.setItem(COACH_CACHE_KEY, JSON.stringify({
+            msg: mensagem, acao, label, ts: Date.now()
+        }));
 
-        if (faseNome) {
-            const dicasFase = {
-                'Menstrual': { msg: 'Fase menstrual — prioriza mobilidade e descanso.', cor: '#FCA5A5' },
-                'Folicular': { msg: 'Fase folicular — energia a subir. Boa altura para força!', cor: '#86EFAC' },
-                'Ovulação': { msg: 'Ovulação — pico de energia. Vai a fundo hoje!', cor: '#FDE68A' },
-                'Lútea': { msg: 'Fase lútea — energia variável. Treinos moderados.', cor: '#C4B5FD' }
-            };
-            const dica = dicasFase[faseNome];
-            if (dica) msgs.push({ tipo: 'ciclo', icon: '🌙', msg: dica.msg, cor: dica.cor, acao: 'ciclo.html', label: 'Ver ciclo' });
-        }
-
-        if (msgs.length === 0) {
-            container.style.display = 'none';
-            return;
-        }
-
-        // Mostrar primeira mensagem mais urgente
-        const m = msgs[0];
-        container.innerHTML = `
-            <div style="display:flex; align-items:flex-start; gap:12px;">
-                <span style="font-size:1.6rem; flex-shrink:0;">${m.icon}</span>
-                <div style="flex:1;">
-                    <div style="font-size:0.88rem; color:var(--cinza-texto); line-height:1.4;">${m.msg}</div>
-                    ${msgs.length > 1 ? `<div style="font-size:0.75rem; color:var(--cinza-meio); margin-top:4px;">+${msgs.length - 1} ${msgs.length - 1 === 1 ? 'aviso' : 'avisos'}</div>` : ''}
-                    ${m.acao ? `<a href="${m.acao}" class="btn btn-primario" style="margin-top:10px; font-size:0.82rem; padding:8px 14px;">${m.label}</a>` : ''}
-                </div>
-            </div>`;
-        container.style.display = 'block';
+        mostrarMensagemCoach(container, mensagem, acao, label);
 
     } catch(e) {
+        console.warn('Coach AI falhou:', e);
         container.style.display = 'none';
     }
 }
 
-// ============================================
+function mostrarMensagemCoach(container, msg, acao, label) {
+    if (!msg) { container.style.display = 'none'; return; }
+    container.innerHTML = `
+        <div style="display:flex; align-items:flex-start; gap:12px;">
+            <span style="font-size:1.4rem; flex-shrink:0;">🤖</span>
+            <div style="flex:1;">
+                <div style="font-size:0.88rem; color:var(--cinza-texto); line-height:1.5;">${msg}</div>
+                ${acao ? `<a href="${acao}" class="btn btn-primario" style="margin-top:10px; font-size:0.82rem; padding:8px 14px;">${label}</a>` : ''}
+            </div>
+        </div>`;
+    container.classList.add('visivel');
+}
+
 // TREINOS
 // ============================================
 
