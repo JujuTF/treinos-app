@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarDiaHoje();
     await carregarWidgets();
     await carregarCicloResumido();
+    await carregarCoach();
     await carregarSessoes();
     await carregarMetricas();
     await carregarCiclo();
@@ -563,6 +564,105 @@ async function carregarCicloResumido() {
         `;
     } catch (e) {
         // sem dados
+    }
+}
+
+// ============================================
+// COACH MOTIVACIONAL
+// ============================================
+
+const COACH_WORKER_URL = 'https://treinos-claude.jujutfigueiredo.workers.dev';
+
+async function carregarCoach() {
+    const container = document.getElementById('coach-card');
+    if (!container) return;
+
+    try {
+        // Recolher dados para o coach
+        const hoje = new Date().toISOString().split('T')[0];
+
+        // Último treino
+        const { data: sessoes } = await db.from('sessoes_treino')
+            .select('data, nome_treino').order('data', { ascending: false }).limit(1);
+        const ultimoTreino = sessoes && sessoes.length > 0 ? sessoes[0] : null;
+        const diasSemTreino = ultimoTreino
+            ? Math.floor((new Date() - new Date(ultimoTreino.data + 'T00:00:00')) / 86400000)
+            : 99;
+
+        // Dados do dia
+        const { data: regDia } = await db.from('registo_diario')
+            .select('*').eq('data', hoje).limit(1);
+        const reg = regDia && regDia.length > 0 ? regDia[0] : {};
+        const aguaAtual = reg.agua_ml || 0;
+        const metaAgua = reg.meta_agua_ml || 2000;
+        const pctAgua = Math.round(aguaAtual / metaAgua * 100);
+
+        // Último peso
+        const { data: pesos } = await db.from('metricas_corporais')
+            .select('data').order('data', { ascending: false }).limit(1);
+        const diasSemPeso = pesos && pesos.length > 0
+            ? Math.floor((new Date() - new Date(pesos[0].data + 'T00:00:00')) / 86400000)
+            : 99;
+
+        // Ciclo
+        const { data: ciclos } = await db.from('ciclo_menstrual')
+            .select('*').order('inicio', { ascending: false }).limit(1);
+        const cicloAtual = ciclos && ciclos.length > 0 ? ciclos[0] : null;
+        let diasCiclo = null;
+        let faseNome = null;
+        if (cicloAtual) {
+            diasCiclo = Math.floor((new Date() - new Date(cicloAtual.inicio + 'T00:00:00')) / 86400000) + 1;
+            faseNome = calcularFase(diasCiclo)?.nome || null;
+        }
+
+        // Construir mensagens do coach
+        const msgs = [];
+
+        if (diasSemTreino >= 2 && diasSemTreino < 99) {
+            msgs.push({ tipo: 'treino', icon: '🏋️', msg: `${diasSemTreino} dias sem treinar. Que tal hoje?`, acao: 'sessao.html', label: 'Iniciar treino' });
+        } else if (diasSemTreino >= 99) {
+            msgs.push({ tipo: 'treino', icon: '🏋️', msg: 'Ainda sem treinos registados. Começa hoje!', acao: 'sessao.html', label: 'Primeiro treino' });
+        }
+
+        if (pctAgua < 50) {
+            msgs.push({ tipo: 'agua', icon: '💧', msg: `Estás em ${aguaAtual}ml de ${metaAgua}ml. Bebe água agora.`, acao: null, label: null });
+        }
+
+        if (diasSemPeso >= 14) {
+            msgs.push({ tipo: 'peso', icon: '⚖️', msg: `Sem pesagem há ${diasSemPeso} dias. Altura de registar.`, acao: 'corpo.html', label: 'Registar métricas' });
+        }
+
+        if (faseNome) {
+            const dicasFase = {
+                'Menstrual': { msg: 'Fase menstrual — prioriza mobilidade e descanso.', cor: '#FCA5A5' },
+                'Folicular': { msg: 'Fase folicular — energia a subir. Boa altura para força!', cor: '#86EFAC' },
+                'Ovulação': { msg: 'Ovulação — pico de energia. Vai a fundo hoje!', cor: '#FDE68A' },
+                'Lútea': { msg: 'Fase lútea — energia variável. Treinos moderados.', cor: '#C4B5FD' }
+            };
+            const dica = dicasFase[faseNome];
+            if (dica) msgs.push({ tipo: 'ciclo', icon: '🌙', msg: dica.msg, cor: dica.cor, acao: 'ciclo.html', label: 'Ver ciclo' });
+        }
+
+        if (msgs.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        // Mostrar primeira mensagem mais urgente
+        const m = msgs[0];
+        container.innerHTML = `
+            <div style="display:flex; align-items:flex-start; gap:12px;">
+                <span style="font-size:1.6rem; flex-shrink:0;">${m.icon}</span>
+                <div style="flex:1;">
+                    <div style="font-size:0.88rem; color:var(--cinza-texto); line-height:1.4;">${m.msg}</div>
+                    ${msgs.length > 1 ? `<div style="font-size:0.75rem; color:var(--cinza-meio); margin-top:4px;">+${msgs.length - 1} ${msgs.length - 1 === 1 ? 'aviso' : 'avisos'}</div>` : ''}
+                    ${m.acao ? `<a href="${m.acao}" class="btn btn-primario" style="margin-top:10px; font-size:0.82rem; padding:8px 14px;">${m.label}</a>` : ''}
+                </div>
+            </div>`;
+        container.style.display = 'block';
+
+    } catch(e) {
+        container.style.display = 'none';
     }
 }
 

@@ -697,16 +697,69 @@ ${s.sugestoes_claude}
     }
 
     const planoEl = document.getElementById('plano-conteudo');
-    const resumoDiv = document.createElement('div');
+
+    // Card de análise Claude
+    var analiseDiv = document.createElement('div');
+    analiseDiv.className = 'card';
+    analiseDiv.id = 'card-analise-claude';
+    var resumoEscapado = texto.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+    if (s.sugestoes_claude) {
+        analiseDiv.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+            + '<div class="card-titulo" style="margin-bottom:0;">🤖 Análise do Claude</div>'
+            + '<button onclick="regenerarAnalise(\'' + s.id + '\', \'' + resumoEscapado + '\')" style="background:none;border:none;color:var(--cinza-meio);font-size:0.78rem;cursor:pointer;">↻ Regenerar</button>'
+            + '</div>'
+            + '<div id="analise-conteudo" style="font-size:0.88rem;line-height:1.6;">' + formatarAnalise(s.sugestoes_claude) + '</div>';
+    } else {
+        analiseDiv.innerHTML = '<div class="card-titulo">🤖 Análise do Claude</div>'
+            + '<p style="font-size:0.85rem;color:var(--cinza-meio);margin-bottom:12px;">Ainda sem análise para esta sessão.</p>'
+            + '<button class="btn btn-primario" id="btn-analisar" onclick="regenerarAnalise(\'' + s.id + '\', \'' + resumoEscapado + '\')">'
+            + '⚡ Analisar com Claude</button>';
+    }
+    planoEl.appendChild(analiseDiv);
+
+    // Card de texto copiável (colapsado)
+    var resumoDiv = document.createElement('div');
     resumoDiv.className = 'card';
-    resumoDiv.innerHTML = `
-        <div class="card-titulo">Resumo para o Claude</div>
-        <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:10px;">Copia este texto e envia ao Claude para análise e sugestões.</p>
-        <textarea id="resumo-texto" readonly style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Mono',monospace; font-size:0.78rem; resize:vertical; min-height:160px; color:var(--cinza-texto); background:var(--fundo); outline:none;">${texto}</textarea>
-        <button class="btn btn-secundario" style="width:100%; margin-top:8px; justify-content:center;" onclick="copiarResumo()">
-            📋 Copiar
-        </button>`;
+    var taId = 'resumo-texto-' + s.id;
+    resumoDiv.innerHTML = '<div class="card-titulo" style="cursor:pointer;" onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'\':\'none\'">📋 Texto para copiar ▾</div>'
+        + '<div style="display:none;">'
+        + '<textarea id="resumo-texto" readonly style="width:100%;border:1.5px solid var(--cinza-borda);border-radius:var(--radius-sm);padding:10px;font-family:\'DM Mono\',monospace;font-size:0.78rem;resize:vertical;min-height:120px;color:var(--cinza-texto);background:var(--fundo);outline:none;">' + texto + '</textarea>'
+        + '<button class="btn btn-secundario" style="width:100%;margin-top:8px;justify-content:center;" onclick="copiarResumo()">📋 Copiar</button>'
+        + '</div>';
     planoEl.appendChild(resumoDiv);
+}
+
+function formatarAnalise(txt) {
+    return txt
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/^## (.+)$/gm, '<h3 style="font-size:0.95rem;font-weight:700;color:var(--azul-escuro);margin:12px 0 6px;">$1</h3>')
+        .replace(/^### (.+)$/gm, '<h4 style="font-size:0.85rem;font-weight:700;color:var(--verde);margin:10px 0 4px;">$1</h4>')
+        .replace(/^\d+\. \*\*(.+?)\*\*(.*)$/gm, '<p style="margin:6px 0;"><strong>$1</strong>$2</p>')
+        .replace(/^- (.+)$/gm, '<li style="margin:3px 0 3px 16px;font-size:0.88rem;">$1</li>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n\n/g, '<br>');
+}
+
+
+async function regenerarAnalise(sessaoId, resumo) {
+    try { resumo = decodeURIComponent(resumo); } catch(e) {}
+    var card = document.getElementById('card-analise-claude');
+    if (card) card.innerHTML = '<div class="card-titulo">🤖 Análise do Claude</div><p style="color:var(--cinza-meio);font-size:0.88rem;">⏳ A analisar com Claude...</p>';
+    var analise = await analisarEGuardar(sessaoId, resumo);
+    if (analise && card) {
+        var resumoEsc = resumo.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        card.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
+            + '<div class="card-titulo" style="margin-bottom:0;">🤖 Análise do Claude</div>'
+            + '<button onclick="regenerarAnalise(\'' + sessaoId + '\', \'' + resumoEsc + '\')" style="background:none;border:none;color:var(--cinza-meio);font-size:0.78rem;cursor:pointer;">↻ Regenerar</button>'
+            + '</div>'
+            + '<div style="font-size:0.88rem;line-height:1.6;">' + formatarAnalise(analise) + '</div>';
+        mostrarToast('Análise guardada ✓');
+    } else if (card) {
+        card.innerHTML = '<div class="card-titulo">🤖 Análise do Claude</div>'
+            + '<p style="color:#DC2626;font-size:0.85rem;">Erro ao analisar. Tenta de novo.</p>'
+            + '<button class="btn btn-primario" style="margin-top:8px;" onclick="regenerarAnalise(\''+sessaoId+'\',\''+encodeURIComponent(resumo||'')+'\')">↻ Tentar de novo</button>';
+    }
 }
 
 async function mostrarCampoSugestoes(s) {
@@ -1464,6 +1517,25 @@ async function terminarTreino() {
     await guardarSessaoCompleta(true);
 }
 
+async function analisarEGuardar(sessaoId, resumo) {
+    try {
+        const WORKER_URL = 'https://treinos-claude.jujutfigueiredo.workers.dev';
+        const response = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tipo: 'analisar_treino', dados: { resumo } })
+        });
+        const result = await response.json();
+        if (result.error) throw new Error(result.error);
+        const analise = result.texto;
+        await db.from('sessoes_treino').update({ sugestoes_claude: analise }).eq('id', sessaoId);
+        return analise;
+    } catch(e) {
+        console.warn('Análise automática falhou:', e);
+        return null;
+    }
+}
+
 async function guardarSessaoCompleta(mostrarResumo = false) {
     const nome = document.getElementById('sess-nome').value.trim() || 'Treino';
     const data = document.getElementById('sess-data').value;
@@ -1574,7 +1646,35 @@ async function guardarSessaoCompleta(mostrarResumo = false) {
     const benchmarkMsg = await atualizarBenchmarkAutomatico(nome, payload.tempo_wod, payload.rounds_completos, data);
 
     mostrarToast(benchmarkMsg ? `Sessão guardada · ${benchmarkMsg}` : 'Sessão guardada ✓');
-    setTimeout(() => window.location.href = 'index.html', 1800);
+
+    // Gerar resumo para análise automática
+    const tempoStr = payload.tempo_wod
+        ? Math.floor(payload.tempo_wod/60) + ':' + String(payload.tempo_wod%60).padStart(2,'0')
+        : null;
+    let resumoAuto = '## Sessão de treino — ' + data + '\n';
+    resumoAuto += '**Treino:** ' + nome + '\n';
+    if (tempoStr) resumoAuto += '**Tempo WOD:** ' + tempoStr + '\n';
+    if (payload.rounds_completos) resumoAuto += '**Rondas:** ' + payload.rounds_completos + '\n';
+    if (notas) resumoAuto += '**Notas:** ' + notas + '\n';
+    if (exercicios.length > 0) {
+        resumoAuto += '\n### Exercícios\n';
+        exercicios.forEach(ex => {
+            resumoAuto += '- **' + ex.nome + '**';
+            if (ex.peso_kg) resumoAuto += ' — ' + ex.peso_kg + 'kg';
+            if (ex.reps) resumoAuto += ' x ' + ex.reps;
+            resumoAuto += '\n';
+        });
+    }
+
+    // Análise automática em background (não bloqueia o redirect)
+    if (sessao && sessao.id) {
+        mostrarToast('⏳ A analisar treino com Claude...');
+        analisarEGuardar(sessao.id, resumoAuto).then(analise => {
+            if (analise) mostrarToast('Análise guardada ✓');
+        });
+    }
+
+    setTimeout(() => window.location.href = 'index.html', 2500);
 }
 
 async function atualizarBenchmarkAutomatico(nome, tempo_wod, rounds, data) {
