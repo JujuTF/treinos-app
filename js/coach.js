@@ -173,14 +173,14 @@ let chatHistorico = [];
 let chatTreinoAtual = null;
 let chatAberto = false;
 
-function iniciarChatCoach(contextoTreino = null) {
+async function iniciarChatCoach(contextoTreino = null) {
     chatTreinoAtual = contextoTreino;
     if (!document.getElementById('coach-chat-overlay')) {
-        criarChatUI();
+        await criarChatUI();
     }
 }
 
-function criarChatUI() {
+async function criarChatUI() {
     const overlay = document.createElement('div');
     overlay.id = 'coach-chat-overlay';
     overlay.innerHTML = `
@@ -270,7 +270,24 @@ function criarChatUI() {
     }
 
     // Mensagem de boas-vindas
-    adicionarMensagemChat('coach', 'Olá! Estou aqui durante o treino. Podes perguntar sobre substituição de exercícios, ajustes de peso, ou qualquer dúvida.');
+    // Carregar contexto do dia para mensagem de boas-vindas personalizada
+    try {
+        const hojeStr = new Date().toISOString().split('T')[0];
+        const { data: regDia } = await db.from('registo_diario').select('energia, horas_sono, flare_fibromialgia').eq('data', hojeStr).limit(1);
+        const reg = regDia && regDia.length > 0 ? regDia[0] : null;
+        let bv = 'Olá! Estou aqui para ajudar.';
+        if (reg) {
+            if (reg.flare_fibromialgia) bv = 'Dia de flare — foco em recuperação. Como posso ajudar?';
+            else if (reg.energia && reg.energia <= 2) bv = 'Energia baixa hoje. Quer algo mais leve ou tens treino marcado?';
+            else if (contextoTreino) bv = 'Treino em curso! Pergunta sobre pesos, substituições ou técnica.';
+            else bv = 'Olá! Podes perguntar sobre treino, pesos, substituições ou como te estás a sentir.';
+        } else if (contextoTreino) {
+            bv = 'Treino em curso! Pergunta sobre pesos, substituições ou técnica.';
+        }
+        adicionarMensagemChat('coach', bv);
+    } catch(e) {
+        adicionarMensagemChat('coach', 'Olá! Podes perguntar sobre treino, pesos ou substituições.');
+    }
 }
 
 function toggleChat() {
@@ -328,9 +345,10 @@ async function enviarMensagemChat() {
                 dados: {
                     mensagem,
                     treino_atual: chatTreinoAtual,
-                    historico_chat: chatHistorico.slice(-6), // últimas 3 trocas
+                    historico_chat: chatHistorico.slice(-6),
                     memoria_recente: memoriaRecente,
-                    resumo_mensal: resumoMensal
+                    resumo_mensal: resumoMensal,
+                    contexto_pagina: window.location.href.includes('sessao') ? 'durante_treino' : 'dashboard'
                 }
             })
         });

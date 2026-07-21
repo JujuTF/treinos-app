@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarWidgets();
     await carregarCicloResumido();
     carregarCoach(); // não bloqueia — corre em background
+    if (typeof iniciarChatCoach === "function") iniciarChatCoach();
     await carregarSessoes();
     await carregarMetricas();
     await carregarCiclo();
