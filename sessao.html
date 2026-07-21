@@ -381,6 +381,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
+<script src="js/coach.js"></script>
 <script>
 
 // ---- AUTH ----
@@ -407,6 +408,7 @@ let counterExAtivo = false;
 const AUTOSAVE_KEY = 'treinos_sessao_ativa';
 
 document.addEventListener('DOMContentLoaded', async () => {
+    if (typeof iniciarChatCoach === 'function') iniciarChatCoach();
     document.getElementById('sess-data').value = hoje();
     document.getElementById('header-data').textContent = new Date().toLocaleDateString('pt-PT', {
         weekday: 'short', day: 'numeric', month: 'long'
@@ -721,7 +723,6 @@ ${s.sugestoes_claude}
     // Card resumo copiável (colapsado)
     const resumoDiv = document.createElement('div');
     resumoDiv.className = 'card';
-    resumoDiv.innerHTML = '<div class="card-titulo" style="cursor:pointer;" onclick="var n=this.nextElementSibling;n.style.display=n.style.display===\'none\'?\'\':\'none\'">📋 Texto para copiar ▾</div>'
         + '<div style="display:none;">'
         + '<textarea id="resumo-texto" readonly style="width:100%;border:1.5px solid var(--cinza-borda);border-radius:var(--radius-sm);padding:10px;font-family:\'DM Mono\',monospace;font-size:0.78rem;resize:vertical;min-height:120px;color:var(--cinza-texto);background:var(--fundo);outline:none;">' + texto.replace(/</g,'&lt;') + '</textarea>'
         + '<button class="btn btn-secundario" style="width:100%;margin-top:8px;justify-content:center;" onclick="copiarResumo()">📋 Copiar</button>'
@@ -759,6 +760,7 @@ async function analisarEGuardarCard(sessaoId, resumo, card) {
         if (result.error) throw new Error(result.error);
         const analise = result.texto;
         await db.from('sessoes_treino').update({ sugestoes_claude: analise }).eq('id', sessaoId);
+        if (typeof guardarMemoriaAnalise === 'function') guardarMemoriaAnalise(analise, sessaoId);
         if (card) {
             card.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">'
                 + '<div class="card-titulo" style="margin-bottom:0;">🤖 Análise do Claude</div>'
@@ -801,13 +803,6 @@ async function mostrarCampoSugestoes(s) {
         ? '<span style="color:var(--laranja); font-size:0.72rem; font-weight:600;">↩ pré-preenchido com sessão anterior</span>'
         : '';
 
-    div.innerHTML = `
-        <div class="card-titulo">💡 Sugestões do Claude ${labelAnterior}</div>
-        <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:10px;">Cola ou edita aqui o feedback do Claude para esta sessão.</p>
-        <textarea id="sugestoes-input" placeholder="Cola aqui as sugestões do Claude..." style="width:100%; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; font-family:'DM Sans',sans-serif; font-size:0.85rem; resize:vertical; min-height:120px; outline:none;">${valorInicial}</textarea>
-        <button class="btn btn-primario" style="margin-top:8px;" onclick="guardarSugestoes('${s.id}')">
-            Guardar sugestões
-        </button>`;
     planoEl.appendChild(div);
 }
 
@@ -1078,6 +1073,8 @@ function parsearMD(md) {
 
 // ---- INICIAR TREINO ----
 async function iniciarTreino() {
+    const nomeEl = document.getElementById('sess-nome');
+    if (typeof iniciarChatCoach === 'function') iniciarChatCoach(nomeEl ? 'Treino em curso: ' + nomeEl.value : null);
     const nome = document.getElementById('sess-nome').value.trim() || 'Treino';
     const data = document.getElementById('sess-data').value;
 
@@ -1685,6 +1682,9 @@ async function guardarSessaoCompleta(mostrarResumo = false) {
     const benchmarkMsg = await atualizarBenchmarkAutomatico(nome, payload.tempo_wod, payload.rounds_completos, data);
 
     mostrarToast(benchmarkMsg ? `Sessão guardada · ${benchmarkMsg}` : 'Sessão guardada ✓');
+    if (typeof guardarMemoriaTreino === 'function' && sessao && sessao.id) {
+        guardarMemoriaTreino({ id: sessao.id, nome_treino: nome, notas }, exercicios);
+    }
     setTimeout(() => window.location.href = 'index.html', 1800);
 }
 

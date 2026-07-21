@@ -628,6 +628,14 @@ async function carregarCoach() {
 
         const historicoTreinos = (ultSessoes || []).map(s => s.nome_treino + ' (' + s.data + ')').join(', ');
 
+        // Carregar memória da BD (coach.js)
+        let memoriaRecente = null, resumoMensal = null;
+        if (typeof carregarMemoriaCoach === 'function') {
+            const mem = await carregarMemoriaCoach();
+            memoriaRecente = mem.memoriaRecente;
+            resumoMensal = mem.resumoMensal;
+        }
+
         // Construir contexto para o Worker
         const contexto = {
             data_hoje: hojeStr,
@@ -643,7 +651,9 @@ async function carregarCoach() {
             fase_ciclo: faseNome || 'desconhecida',
             dia_ciclo: diasCiclo,
             dias_sem_pesagem: diasSemPeso,
-            ultimo_peso_kg: ultimoPeso ? ultimoPeso.peso_kg + 'kg' : 'sem registo'
+            ultimo_peso_kg: ultimoPeso ? ultimoPeso.peso_kg + 'kg' : 'sem registo',
+            memoria_recente: memoriaRecente,
+            resumo_mensal: resumoMensal
         };
 
         // Chamar Worker
@@ -670,6 +680,13 @@ async function carregarCoach() {
         localStorage.setItem(COACH_CACHE_KEY, JSON.stringify({
             msg: mensagem, acao, label, ts: Date.now()
         }));
+
+        // Guardar na memória da BD
+        if (typeof guardarMemoria === 'function') {
+            guardarMemoria('coach_diario', mensagem, {
+                energia: energia, agua_ml: aguaAtual, fase_ciclo: faseNome
+            });
+        }
 
         mostrarMensagemCoach(container, mensagem, acao, label);
 
