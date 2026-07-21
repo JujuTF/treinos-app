@@ -569,9 +569,6 @@ async function carregarCicloResumido() {
 
 // ============================================
 // COACH MOTIVACIONAL COM AI
-const COACH_CACHE_KEY = 'treinos_coach_cache';
-const COACH_CACHE_TTL = 4 * 60 * 60 * 1000; // 4 horas
-
 async function carregarCoach() {
     const container = document.getElementById('coach-card');
     if (!container) return;
