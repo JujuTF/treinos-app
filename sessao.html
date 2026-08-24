@@ -488,26 +488,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn('Erro ao restaurar sessão:', e);
         }
     } else if (gerado === '1') {
-        console.log('treino_gerado_md:', localStorage.getItem('treino_gerado_md'));
-    console.log('treino_em_curso:', localStorage.getItem('treino_em_curso'));
         // Treino gerado pelo Claude — usar localStorage (mais fiável)
         var mdGerado = localStorage.getItem('treino_gerado_md');
         var dataGerado = localStorage.getItem('treino_gerado_data');
-
-        // Fallback: se treino_gerado_md já foi consumido, tentar autosave
-        if (!mdGerado) {
-            try {
-                const autosaveRaw = localStorage.getItem('treino_em_curso');
-                if (autosaveRaw) {
-                    const autosave = JSON.parse(autosaveRaw);
-                    if (autosave.planoMD && Date.now() - autosave.ts < 12 * 60 * 60 * 1000) {
-                        mdGerado = autosave.planoMD;
-                        dataGerado = autosave.data;
-                    }
-                }
-            } catch(e) {}
-        }
-
         if (mdGerado) {
             localStorage.removeItem('treino_gerado_md');
             localStorage.removeItem('treino_gerado_data');
@@ -935,17 +918,23 @@ function parsearMD(md) {
 
         if (!blocoAtual) continue;
 
-        // Subtítulo (linhas com ** no início, com ou sem | )
+        // Subtítulo (linhas com ** no início) — mas NÃO se for exercício numerado **N. Nome**
         if (linha.startsWith('**') && !linha.startsWith('| ')) {
-            const subLinha = linha.replace(/\*\*/g, '');
-            blocoAtual.subtitulo += subLinha + ' ';
-            // Extrair rondas: "Formato: 4 rondas | ..."
-            const rondasMatch = subLinha.match(/(\d+)\s*ronda/i) || subLinha.match(/(\d+)\s*round/i);
-            if (rondasMatch) blocoAtual.rondas = parseInt(rondasMatch[1]);
-            // Extrair peso do bloco: "Peso: 8 kg", "8–10 kg"
-            const pesoMatch = subLinha.match(/(\d+)(?:[–\-]\d+)?\s*kg/);
-            if (pesoMatch && !blocoAtual.peso_bloco) blocoAtual.peso_bloco = pesoMatch[0];
-            continue;
+            const isExNumerado = /^\*\*\d+\.\s/.test(linha);
+            const isBoldEx = /^\*\*[^*]+\*\*\s*$/.test(linha) && linha.split('**').length === 3;
+            if (!isExNumerado) {
+                // Fechar exercício em curso antes de processar subtítulo
+                if (exBoldAtual) { blocoAtual.exercicios.push(exBoldAtual); exBoldAtual = null; }
+                const subLinha = linha.replace(/\*\*/g, '');
+                blocoAtual.subtitulo += subLinha + ' ';
+                // Extrair rondas: "Formato: 4 rondas | ..."
+                const rondasMatch = subLinha.match(/(\d+)\s*ronda/i) || subLinha.match(/(\d+)\s*round/i);
+                if (rondasMatch) blocoAtual.rondas = parseInt(rondasMatch[1]);
+                // Extrair peso do bloco: "Peso: 8 kg", "8–10 kg"
+                const pesoMatch = subLinha.match(/(\d+)(?:[–\-]\d+)?\s*kg/);
+                if (pesoMatch && !blocoAtual.peso_bloco) blocoAtual.peso_bloco = pesoMatch[0];
+                continue;
+            }
         }
 
         // Avisos (> texto)
@@ -955,6 +944,21 @@ function parsearMD(md) {
             const textoAviso = linha.replace('> ', '').replace(/\*\*/g, '');
             if (!textoAviso.startsWith('🎥')) {
                 blocoAtual.avisos.push(textoAviso);
+            }
+            continue;
+        }
+
+        // Bullet warm-up: "- **Nome** — descrição" → exercício simples
+        if (blocoAtual.tipo === 'warmup' && linha.startsWith('- **')) {
+            const warmMatch = linha.match(/^- \*\*([^*]+)\*\*(?:\s*[—-]+\s*(.+))?$/);
+            if (warmMatch) {
+                blocoAtual.exercicios.push({
+                    nome: warmMatch[1].trim(),
+                    reps: warmMatch[2] ? warmMatch[2].trim() : '',
+                    notas: '',
+                    peso_plano: '',
+                    feito: false
+                });
             }
             continue;
         }
@@ -985,7 +989,7 @@ function parsearMD(md) {
             } else {
                 const bulletTxt = linha.replace(/^- /, '').replace(/\*\*/g, '').trim();
                 // Se parece reps (ex: "10 reps", "3x10")
-                if (!exBoldAtual.reps && bulletTxt.match(/^\d+\s*(reps?|x\s*\d+|séries?|rounds?)/i)) {
+                if (!exBoldAtual.reps && bulletTxt.match(/^\d+\s*(reps?|x\s*\d+|séries?|rounds?|seg|min|s\b)/i)) {
                     exBoldAtual.reps = bulletTxt;
                 } else if (!exBoldAtual.notas) {
                     exBoldAtual.notas = bulletTxt;
@@ -2081,7 +2085,6 @@ async function confirmarGerarSessao() {
         </div>
     </div>
 </div>
-
 
 </body>
 </html>
