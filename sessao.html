@@ -488,6 +488,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.warn('Erro ao restaurar sessão:', e);
         }
     } else if (gerado === '1') {
+        console.log('treino_gerado_md:', localStorage.getItem('treino_gerado_md'));
+    console.log('treino_em_curso:', localStorage.getItem('treino_em_curso'));
         // Treino gerado pelo Claude — usar localStorage (mais fiável)
         var mdGerado = localStorage.getItem('treino_gerado_md');
         var dataGerado = localStorage.getItem('treino_gerado_data');
