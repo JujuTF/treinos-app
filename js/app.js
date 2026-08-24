@@ -666,10 +666,20 @@ async function carregarCoach() {
         // Parsear resposta JSON do Worker
         let coachData;
         try {
-            coachData = JSON.parse(result.texto);
+            // Limpar markdown ```json ... ``` caso o Worker o inclua
+            let textoLimpo = result.texto.trim()
+                .replace(/^```json\s*/i, '').replace(/^```\s*/i, '')
+                .replace(/\s*```$/i, '').trim();
+            coachData = JSON.parse(textoLimpo);
         } catch(e) {
-            // Fallback se não vier JSON
-            coachData = { mensagem: result.texto, acao: null, label: null };
+            // Tentar extrair JSON de dentro do texto
+            const match = result.texto.match(/\{[\s\S]*\}/);
+            if (match) {
+                try { coachData = JSON.parse(match[0]); }
+                catch(e2) { coachData = { mensagem: result.texto.replace(/```json?|```/g, '').trim(), acao: null, label: null }; }
+            } else {
+                coachData = { mensagem: result.texto.replace(/```json?|```/g, '').trim(), acao: null, label: null };
+            }
         }
 
         const { mensagem, acao, label } = coachData;
