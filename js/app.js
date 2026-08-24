@@ -665,7 +665,7 @@ async function carregarCoach() {
 
         // Parsear resposta JSON do Worker
         let coachData;
-        console.log('COACH RAW:', JSON.stringify(result.texto));
+
         try {
             
             // Limpar markdown ```json ... ``` caso o Worker o inclua
