@@ -44,6 +44,35 @@
         .fases-legenda strong { font-family: var(--fonte-t); font-weight: 700; }
         .donut-total { font-family: var(--fonte-t); font-size: 30px; font-weight: 700; line-height: 1; color: var(--tx); }
         .donut-rot { font-size: 12px; color: var(--tx2); margin-top: 3px; }
+
+        /* ---- COMBOS ---- */
+        .combos-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; min-height: 92px; }
+        .combos-mes { font-size: 13px; font-weight: 600; color: var(--tx); margin: 18px 0 10px; text-transform: capitalize; }
+        .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px 0; justify-items: center; }
+        .cal-cab { font-size: 11px; font-weight: 600; color: var(--tx2); }
+        .cal-dia {
+            width: 28px; height: 28px; border-radius: 50%;
+            display: grid; place-items: center;
+            font-size: 12px; font-weight: 600; color: var(--tx2);
+            background: var(--pista);
+        }
+        .cal-dia.parcial { background: transparent; box-shadow: inset 0 0 0 2.5px rgba(13, 148, 136, 0.4); color: var(--tx); }
+        .cal-dia.combo { background: linear-gradient(135deg, #0D9488, #6366F1); color: #fff; }
+        .cal-dia.futuro { background: transparent; color: rgba(71, 85, 105, 0.5); }
+        .cal-dia.hoje { outline: 2px solid var(--teal); outline-offset: 2px; }
+        .cal-legenda { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; font-size: 12px; color: var(--tx2); }
+        .cal-legenda li { display: flex; align-items: center; gap: 6px; }
+        .cal-legenda i { width: 12px; height: 12px; border-radius: 50%; background: var(--pista); }
+        .cal-legenda i.parcial { background: transparent; box-shadow: inset 0 0 0 2px rgba(13, 148, 136, 0.4); }
+        .cal-legenda i.combo { background: linear-gradient(135deg, #0D9488, #6366F1); }
+
+        .trofeus { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+        .trofeu { background: var(--cinza-claro); border-radius: 20px; padding: 14px 10px; text-align: center; }
+        .trofeu svg { display: block; margin: 0 auto 8px; }
+        .trofeu-mes { font-size: 12px; font-weight: 600; color: var(--tx2); text-transform: capitalize; }
+        .trofeu-num { font-family: var(--fonte-t); font-size: 20px; font-weight: 700; color: var(--tx); margin-top: 2px; }
+        .trofeu-nivel { font-size: 12px; color: var(--tx2); margin-top: 2px; }
+        .trofeu-falta { font-size: 12px; color: var(--tx2); margin-top: 8px; line-height: 1.35; }
     </style>
 </head>
 <body>
@@ -60,12 +89,16 @@
         <div class="nivel" id="nivel-conteudo"></div>
     </div>
 
-    <!-- Espaço reservado para gamification futura (conquistas). Não implementado.
-    <div class="card" id="card-conquistas" hidden>
-        <div class="card-titulo">Conquistas</div>
-        <div id="conquistas-conteudo"></div>
+    <!-- COMBOS: sequência, recorde, calendário do mês e troféu -->
+    <div class="card" id="card-combos">
+        <div class="card-titulo">Combos</div>
+        <div class="combos-nums" id="combos-nums"></div>
+        <div class="combos-mes" id="combos-mes-nome"></div>
+        <div class="cal" id="combos-cal" role="group" aria-label="Calendário de combos do mês"></div>
+        <ul class="cal-legenda" id="combos-legenda"></ul>
+        <p class="nota-pequena" id="combos-nota"></p>
+        <div class="trofeus" id="combos-trofeus"></div>
     </div>
-    -->
 
     <!-- RESUMO: 3 anéis pequenos -->
     <div class="card">
@@ -127,6 +160,7 @@
 <script src="js/ciclo-calc.js"></script>
 <script src="js/discreto.js"></script>
 <script src="js/treino-calc.js"></script>
+<script src="js/conquistas.js"></script>
 <script src="js/ui.js"></script>
 <script>
 
@@ -162,6 +196,7 @@ async function carregarSessoes() {
     const melhor = TreinoCalc.melhorSequencia(datas);
 
     desenharNivel(sequencia);
+    carregarCombos(hoje);
     desenharResumo(diasSemana, diasMes, melhor, sequencia, parseInt(hoje.slice(8), 10));
     document.getElementById('texto-ultimo').textContent = textoUltimo(TreinoCalc.diasDesdeUltimo(datas, hoje));
     desenharSemanas(TreinoCalc.semanasRecentes(datas, hoje, 8));
@@ -183,6 +218,96 @@ function desenharNivel(sequencia) {
         UI.anel({ pct: n.progresso * 100, tamanho: 120, traco: 9, centro: centro, rotulo: aria }) +
         '<div style="min-width:0;"><div class="nivel-titulo">Nível ' + n.nivel + '</div>' +
         '<div class="nivel-frase">' + frase + '</div></div>';
+}
+
+// ---- 1b. Combos (treino + água + suplementos) ----
+// Medalha de linha em 4 níveis (0 = sem troféu, tracejada). O nível distingue-se
+// também pelos anéis, não só pela cor.
+function medalha(nivel) {
+    const cores = ['#94A3B8', '#B45309', '#64748B', '#CA8A04'];
+    const c = cores[nivel];
+    const t = nivel === 0 ? ' stroke-dasharray="3 4"' : '';
+    return '<svg viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="' + c + '" stroke-width="2.5"' +
+        ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M20 6l8 16M44 6l-8 16"' + t + '/>' +
+        '<circle cx="32" cy="40" r="17"' + (nivel ? ' fill="' + c + '" fill-opacity="0.12"' : '') + t + '/>' +
+        (nivel >= 2 ? '<circle cx="32" cy="40" r="13" stroke-width="1.5"/>' : '') +
+        (nivel >= 3 ? '<circle cx="32" cy="40" r="21" stroke-width="1.5"/>' : '') +
+        (nivel ? '<path d="M32 33l2.4 4.9 5.3.8-3.9 3.8.9 5.3-4.7-2.5-4.7 2.5.9-5.3-3.9-3.8 5.3-.8z"/>' : '') +
+        '</svg>';
+}
+
+function nomeMes(mes) {
+    const p = mes.split('-').map(Number);
+    return new Date(p[0], p[1] - 1, 1).toLocaleDateString('pt-PT', { month: 'long', year: 'numeric' });
+}
+
+function plural(n, um, varios) { return n + ' ' + (n === 1 ? um : varios); }
+
+async function carregarCombos(hoje) {
+    const dados = await Conquistas.carregar(db, TreinoCalc.somarDias(hoje, -730), { semTreinos: true });
+    const idx = Conquistas.indexar({
+        treinos: datas.map(function (d) { return { data: d }; }),
+        agua: dados.agua, suplementos: dados.suplementos
+    });
+    const combos = Conquistas.datasCombo(idx);
+    const seq = Conquistas.sequenciaCombos(combos, hoje);
+    const melhor = Conquistas.melhorCombos(combos);
+    const discreto = Discreto.ativo();
+
+    // dois números com anel pequeno (sequência: avanço de uma semana; recorde: sequência / recorde)
+    function col(pct, valor, rotulo, aria) {
+        return '<div class="anel-col">' +
+            UI.anel({ pct: pct, tamanho: 64, traco: 10, rotulo: aria,
+                centro: '<span class="anel-num pequeno">' + valor + '</span>' }) +
+            '<div class="anel-col-rot">' + rotulo + '</div></div>';
+    }
+    document.getElementById('combos-nums').innerHTML =
+        col(Math.min(seq, 7) / 7 * 100, seq, 'Sequência de combos', 'Sequência de combos: ' + plural(seq, 'dia', 'dias')) +
+        col(melhor > 0 ? Math.min(100, seq / melhor * 100) : 0, melhor, 'Recorde', 'Recorde de combos: ' + plural(melhor, 'dia', 'dias'));
+
+    // calendário do mês (semana a começar à segunda)
+    const mes = hoje.slice(0, 7);
+    const cal = Conquistas.calendarioMes(idx, mes, hoje);
+    document.getElementById('combos-mes-nome').textContent = nomeMes(mes);
+    let html = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map(function (l) {
+        return '<span class="cal-cab" aria-hidden="true">' + l + '</span>';
+    }).join('');
+    for (let i = 0; i < cal.offset; i++) html += '<span></span>';
+    cal.dias.forEach(function (d) {
+        const cls = d.combo ? ' combo' : d.futuro ? ' futuro' : d.feitas === 2 ? ' parcial' : '';
+        const est = d.combo ? 'combo' : d.futuro ? 'ainda por vir' : d.feitas + ' de 3';
+        html += '<span class="cal-dia' + cls + (d.hoje ? ' hoje' : '') + '" role="img" aria-label="Dia ' + d.dia + ': ' + est + '">' + d.dia + '</span>';
+    });
+    document.getElementById('combos-cal').innerHTML = html;
+
+    document.getElementById('combos-legenda').innerHTML =
+        '<li><i class="combo"></i>Combo</li><li><i class="parcial"></i>2 de 3</li><li><i></i>0 a 1</li>';
+    document.getElementById('combos-nota').textContent = discreto
+        ? 'Um combo é um dia com treino, água na meta e hábitos do dia feitos.'
+        : 'Um combo é um dia com treino, água na meta e suplementos e medicação feitos.';
+
+    // troféu do mês atual e do mês anterior (fechado)
+    const anterior = Conquistas.mesAnterior(mes);
+    function trofeu(m, aDecorrer) {
+        const n = Conquistas.combosDoMes(combos, m);
+        const t = Conquistas.nivelTrofeu(n);
+        const nivel = t.nivel ? 'Troféu de ' + t.nome.toLowerCase() : 'Sem troféu';
+        let falta = '';
+        if (aDecorrer) {
+            falta = t.proximo
+                ? (t.proximo.faltam === 1 ? 'Falta 1 combo' : 'Faltam ' + t.proximo.faltam + ' combos') + ' para o próximo nível (' + t.proximo.nome.toLowerCase() + ')'
+                : 'Nível máximo este mês';
+        }
+        return '<div class="trofeu" role="group" aria-label="' + nomeMes(m) + ': ' + plural(n, 'combo', 'combos') + ', ' + nivel.toLowerCase() + '">' +
+            medalha(t.nivel) +
+            '<div class="trofeu-mes">' + nomeMes(m).replace(/ de \d+$/, '') + (aDecorrer ? ' (até agora)' : '') + '</div>' +
+            '<div class="trofeu-num">' + plural(n, 'combo', 'combos') + '</div>' +
+            '<div class="trofeu-nivel">' + nivel + '</div>' +
+            (falta ? '<div class="trofeu-falta">' + falta + '</div>' : '') + '</div>';
+    }
+    document.getElementById('combos-trofeus').innerHTML = trofeu(mes, true) + trofeu(anterior, false);
+    UI.animarAneis(document.getElementById('card-combos'));
 }
 
 // ---- 2. Esta semana / Este mês / Recorde ----
