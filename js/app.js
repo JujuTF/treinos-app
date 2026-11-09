@@ -23,7 +23,8 @@ async function fazerLogout() {
 document.addEventListener('DOMContentLoaded', async () => {
     await verificarAuth();
     setarDataHeader();
-    await carregarResumoSemana();
+    configurarTreino();
+    await carregarSessoes();
     mostrarDeployInfo();
     await carregarDiaHoje();
     await carregarCicloResumido();
@@ -31,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // ---- UTILS ----
 function hoje() {
-    return new Date().toISOString().split('T')[0];
+    return CicloCalc.hojeLocal();
 }
 
 function mostrarToast(msg) {
@@ -88,83 +89,208 @@ async function carregarDiaHoje() {
 }
 
 // ============================================
+// TREINOS — "Treinei hoje" + resumo da semana
+// ============================================
+
+// Tipos já usados em sessoes_treino (ver histórico do git, commit 762e9ef)
+const TIPOS_TREINO = { 'Treino': 'Força', 'Caminhada': 'Cardio', 'Mobilidade': 'Mobilidade' };
+
+let sessoesRecentes = [];                 // últimos ~400 dias: { id, data, created_at }
+let treinoSel = { min: null, tipo: 'Treino' };
+let _confirmarResolve = null;
+
+async function carregarSessoes() {
+    const desde = TreinoCalc.somarDias(hoje(), -400);
+    const { data, error } = await db
+        .from('sessoes_treino')
+        .select('id, data, created_at')
+        .gte('data', desde)
+        .order('data', { ascending: false })
+        .limit(1000);
+    if (error) console.warn('sessoes_treino:', error.message);
+    sessoesRecentes = error ? [] : (data || []);
+    renderTreinoHoje();
+    renderResumoSemana();
+}
+
+function sessoesDeHoje() {
+    return sessoesRecentes
+        .filter(s => s.data === hoje())
+        .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+}
+
+function renderTreinoHoje() {
+    const el = document.getElementById('treino-hoje');
+    if (!el) return;
+    const sessoes = sessoesDeHoje();
+
+    if (!sessoes.length) {
+        el.innerHTML = `<button class="btn btn-primario btn-grande" onclick="abrirTreino()">Treinei hoje</button>`;
+        return;
+    }
+
+    const n = sessoes.length;
+    el.innerHTML = `
+        <div class="card" style="border-left:4px solid var(--verde); margin-bottom:0;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                <div style="font-weight:700; color:var(--azul-escuro);">✅ Treino registado hoje${n > 1 ? ' (' + n + ')' : ''}</div>
+                <span class="badge badge-verde">Feito</span>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-secundario" style="flex:1; font-size:0.85rem; justify-content:center;" onclick="abrirTreino()">+ Outro treino</button>
+                <button class="btn btn-secundario" style="flex:1; font-size:0.85rem; justify-content:center;" onclick="pedirDesfazerTreino()">Desfazer</button>
+            </div>
+        </div>`;
+}
+
+// ---- folha rápida ----
+function configurarTreino() {
+    // chips: duração (opcional, desmarca ao tocar de novo) e tipo
+    document.getElementById('chips-duracao')?.addEventListener('click', e => {
+        const chip = e.target.closest('.chip');
+        if (!chip) return;
+        const min = parseInt(chip.dataset.min);
+        treinoSel.min = treinoSel.min === min ? null : min;
+        pintarChips();
+    });
+    document.getElementById('chips-tipo')?.addEventListener('click', e => {
+        const chip = e.target.closest('.chip');
+        if (!chip) return;
+        treinoSel.tipo = chip.dataset.tipo;
+        pintarChips();
+    });
+    document.querySelectorAll('.modal-overlay').forEach(ov => {
+        ov.addEventListener('click', e => {
+            if (e.target !== ov) return;
+            if (ov.id === 'modal-confirmar') responderConfirmacao(false);
+            else ov.classList.remove('open');
+        });
+    });
+}
+
+function pintarChips() {
+    document.querySelectorAll('#chips-duracao .chip').forEach(c =>
+        c.classList.toggle('sel', parseInt(c.dataset.min) === treinoSel.min));
+    document.querySelectorAll('#chips-tipo .chip').forEach(c =>
+        c.classList.toggle('sel', c.dataset.tipo === treinoSel.tipo));
+}
+
+function abrirTreino() {
+    treinoSel = { min: null, tipo: 'Treino' };
+    pintarChips();
+    document.getElementById('modal-treino').classList.add('open');
+}
+
+function fecharTreino() {
+    document.getElementById('modal-treino').classList.remove('open');
+}
+
+async function guardarTreino() {
+    const nome = treinoSel.tipo || 'Treino';
+    const payload = {
+        data: hoje(),
+        nome_treino: nome,
+        tipo: TIPOS_TREINO[nome] || 'Força',
+        tempo_wod: treinoSel.min ? treinoSel.min * 60 : null,
+        rounds_completos: null,
+        notas: null
+    };
+
+    const { error } = await db.from('sessoes_treino').insert(payload);
+    if (error) {
+        console.error(error);
+        mostrarToast('Erro ao guardar 😕');
+        return;
+    }
+    fecharTreino();
+    mostrarToast('Treino registado ✓');
+    await carregarSessoes();
+}
+
+// ---- confirmação ----
+function pedirConfirmacao(titulo, texto, rotuloOk) {
+    document.getElementById('confirmar-titulo').textContent = titulo;
+    document.getElementById('confirmar-texto').textContent = texto;
+    document.getElementById('confirmar-ok').textContent = rotuloOk || 'Confirmar';
+    document.getElementById('modal-confirmar').classList.add('open');
+    return new Promise(resolve => { _confirmarResolve = resolve; });
+}
+
+function responderConfirmacao(valor) {
+    document.getElementById('modal-confirmar').classList.remove('open');
+    const r = _confirmarResolve;
+    _confirmarResolve = null;
+    if (r) r(valor);
+}
+
+async function pedirDesfazerTreino() {
+    const ultima = sessoesDeHoje()[0];
+    if (!ultima) return;
+
+    const ok = await pedirConfirmacao(
+        'Desfazer treino',
+        'Queres apagar o último treino registado hoje?',
+        'Desfazer'
+    );
+    if (!ok) return;
+
+    const { error } = await db.from('sessoes_treino').delete().eq('id', ultima.id);
+    if (error) {
+        console.error(error);
+        mostrarToast('Não foi possível desfazer 😕');
+        return;
+    }
+    mostrarToast('Treino removido');
+    await carregarSessoes();
+}
+
+// ============================================
 // RESUMO DA SEMANA
 // ============================================
 
-async function carregarResumoSemana() {
+function renderResumoSemana() {
     const container = document.getElementById('resumo-semana');
     if (!container) return;
 
-    const agora = new Date();
-    const diaSemana = agora.getDay();
-    const diasDesdeSegunda = diaSemana === 0 ? 6 : diaSemana - 1;
-    const segundaFeira = new Date(agora);
-    segundaFeira.setDate(agora.getDate() - diasDesdeSegunda);
-    const inicioSemana = segundaFeira.toISOString().split('T')[0];
-    const hojeStr = agora.toISOString().split('T')[0];
+    const hojeStr = hoje();
+    const datas = TreinoCalc.datasUnicas(sessoesRecentes);
+    const segunda = TreinoCalc.inicioSemana(hojeStr);
+    const letras = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 
-    const [{ data: sessoes }, { data: registos }] = await Promise.all([
-        db.from('sessoes_treino').select('data').gte('data', inicioSemana).lte('data', hojeStr),
-        db.from('registo_diario').select('data, energia, horas_sono, flare_fibromialgia').gte('data', inicioSemana).lte('data', hojeStr)
-    ]);
-
-    const numTreinos = sessoes ? sessoes.length : 0;
-    const comEnergia = (registos || []).filter(r => r.energia);
-    const mediaEnergia = comEnergia.length > 0
-        ? (comEnergia.reduce((s, r) => s + r.energia, 0) / comEnergia.length).toFixed(1)
-        : null;
-    const comSono = (registos || []).filter(r => r.horas_sono);
-    const mediaSono = comSono.length > 0
-        ? (comSono.reduce((s, r) => s + parseFloat(r.horas_sono), 0) / comSono.length).toFixed(1)
-        : null;
-    const flares = (registos || []).filter(r => r.flare_fibromialgia).length;
-    const energiaEmoji = ['', String.fromCodePoint(0x1F634), String.fromCodePoint(0x1F611), String.fromCodePoint(0x1F642), String.fromCodePoint(0x1F4AA), String.fromCodePoint(0x1F525)];
-    const diasLetras = ['S','T','Q','Q','S','S','D'];
-
-    // Calendário
-    const dias = [];
+    let bolinhas = '';
     for (let i = 0; i < 7; i++) {
-        const d = new Date(segundaFeira);
-        d.setDate(segundaFeira.getDate() + i);
-        const ds = d.toISOString().split('T')[0];
-        const treinou = (sessoes || []).some(s => s.data === ds);
-        const reg = (registos || []).find(r => r.data === ds);
-        const energia = reg ? reg.energia : null;
+        const ds = TreinoCalc.somarDias(segunda, i);
+        const treinou = datas.indexOf(ds) !== -1;
         const ehHoje = ds === hojeStr;
         const futuro = ds > hojeStr;
-        dias.push({ letra: diasLetras[i], treinou, energia, ehHoje, futuro });
+        const bg = ehHoje ? 'var(--verde)' : treinou ? 'var(--verde-claro)' : futuro ? 'transparent' : 'var(--cinza-claro)';
+        const cor = ehHoje ? 'white' : treinou ? 'var(--verde)' : 'var(--cinza-meio)';
+        const borda = futuro && !ehHoje ? '1.5px dashed var(--cinza-borda)' : 'none';
+        const icone = treinou ? '✓' : futuro ? '' : '·';
+        bolinhas += `
+            <div style="text-align:center">
+                <div style="font-size:0.6rem; color:var(--cinza-meio); margin-bottom:3px; font-weight:600">${letras[i]}</div>
+                <div style="width:32px; height:32px; border-radius:50%; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:0.75rem; background:${bg}; color:${cor}; border:${borda}">${icone}</div>
+            </div>`;
     }
 
-    // Construir HTML sem template literals problemáticos
-    const partes = [];
-    partes.push('<div class="card">');
-    partes.push('<div class="card-titulo">Esta semana</div>');
-    partes.push('<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:14px;">');
+    const diasSemana = TreinoCalc.contarIntervalo(datas, segunda, TreinoCalc.somarDias(segunda, 6));
+    const sequencia = TreinoCalc.sequenciaAtual(datas, hojeStr);
+    const caixa = (valor, rotulo) => `
+        <div style="text-align:center; background:var(--fundo); border-radius:var(--radius-sm); padding:10px;">
+            <div style="font-size:1.4rem; font-weight:700; color:var(--verde);">${valor}</div>
+            <div style="font-size:0.68rem; color:var(--cinza-meio); margin-top:2px;">${rotulo}</div>
+        </div>`;
 
-    dias.forEach(function(d) {
-        var bg = d.ehHoje ? 'var(--verde)' : d.treinou ? 'var(--verde-claro)' : d.futuro ? 'transparent' : 'var(--cinza-claro)';
-        var cor = d.ehHoje ? 'white' : d.treinou ? 'var(--verde)' : 'var(--cinza-meio)';
-        var brd = d.futuro && !d.ehHoje ? '1.5px dashed var(--cinza-borda)' : 'none';
-        var ico = d.energia ? energiaEmoji[d.energia] : d.treinou ? '✓' : d.futuro ? '' : '·';
-        var fs = d.energia ? '1rem' : '0.75rem';
-        partes.push('<div style="text-align:center">');
-        partes.push('<div style="font-size:0.6rem;color:var(--cinza-meio);margin-bottom:3px;font-weight:600">' + d.letra + '</div>');
-        partes.push('<div style="width:32px;height:32px;border-radius:50%;margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:' + fs + ';background:' + bg + ';color:' + cor + ';border:' + brd + '">' + ico + '</div>');
-        partes.push('</div>');
-    });
-
-    partes.push('</div>');
-    partes.push('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">');
-    partes.push('<div style="text-align:center;background:var(--fundo);border-radius:var(--radius-sm);padding:10px"><div style="font-size:1.4rem;font-weight:700;color:var(--verde)">' + numTreinos + '</div><div style="font-size:0.68rem;color:var(--cinza-meio);margin-top:2px">treinos</div></div>');
-    var emojiMedia = mediaEnergia ? energiaEmoji[Math.round(parseFloat(mediaEnergia))] : '—';
-    partes.push('<div style="text-align:center;background:var(--fundo);border-radius:var(--radius-sm);padding:10px"><div style="font-size:1.4rem;font-weight:700;color:var(--azul-escuro)">' + emojiMedia + '</div><div style="font-size:0.68rem;color:var(--cinza-meio);margin-top:2px">energia média</div></div>');
-    partes.push('<div style="text-align:center;background:var(--fundo);border-radius:var(--radius-sm);padding:10px"><div style="font-size:1.4rem;font-weight:700;color:var(--azul-escuro)">' + (mediaSono || '—') + '</div><div style="font-size:0.68rem;color:var(--cinza-meio);margin-top:2px">h sono médio</div></div>');
-    partes.push('</div>');
-    if (flares > 0) {
-        partes.push('<div style="margin-top:8px;font-size:0.78rem;color:var(--laranja)">🌪️ ' + flares + ' dia' + (flares > 1 ? 's' : '') + ' com flare esta semana</div>');
-    }
-    partes.push('</div>');
-    container.innerHTML = partes.join('');
+    container.innerHTML = `
+        <div class="card">
+            <div class="card-titulo">Esta semana</div>
+            <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:14px;">${bolinhas}</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                ${caixa(diasSemana, diasSemana === 1 ? 'dia treinado' : 'dias treinados')}
+                ${caixa(sequencia, sequencia === 1 ? 'dia de sequência' : 'dias de sequência')}
+            </div>
+        </div>`;
 }
 
 // ============================================

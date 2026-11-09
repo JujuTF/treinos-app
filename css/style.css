@@ -295,6 +295,33 @@ body {
 
 .btn-secundario:hover { background: var(--cinza-borda); }
 
+.btn-grande {
+    font-size: 1.15rem;
+    padding: 20px;
+    min-height: 64px;
+}
+
+/* ---- CHIPS ---- */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.chip {
+    padding: 10px 14px;
+    border-radius: 99px;
+    border: 1.5px solid var(--cinza-borda);
+    background: var(--branco);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--cinza-texto);
+    cursor: pointer;
+}
+
+.chip.sel {
+    background: var(--verde);
+    border-color: var(--verde);
+    color: var(--branco);
+}
+
 .btn-perigo {
     background: #FEE2E2;
     color: #DC2626;
