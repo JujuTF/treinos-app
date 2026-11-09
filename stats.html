@@ -6,32 +6,26 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Insights</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232A9D8F'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F766E'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
     <style>
-        .grelha-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .grelha-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .caixa {
             text-align: center;
-            background: var(--fundo);
-            border-radius: var(--radius-sm);
-            padding: 14px 8px;
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            border-radius: 20px;
+            padding: 16px 8px;
         }
-        .caixa-valor { font-size: 1.6rem; font-weight: 700; color: var(--verde); }
-        .caixa-rotulo { font-size: 0.72rem; color: var(--cinza-meio); margin-top: 2px; }
-        .texto-suave { font-size: 0.9rem; color: var(--cinza-texto); line-height: 1.5; }
-        .nota-pequena { font-size: 0.75rem; color: var(--cinza-meio); margin-top: 10px; }
+        .caixa-valor { font-family: var(--fonte-t); font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; color: var(--tx); }
+        .caixa-rotulo { font-size: 13px; color: var(--tx2); margin-top: 6px; }
+        .texto-suave { font-size: 15px; color: var(--tx); line-height: 1.5; }
+        .nota-pequena { font-size: 12px; color: var(--tx2); margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <header class="header">
-    <div style="display:flex; align-items:center; gap:10px;">
-        <a href="index.html" style="color:var(--cinza-meio); display:flex;">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M15 19l-7-7 7-7"/>
-            </svg>
-        </a>
-        <h1>Insights</h1>
-    </div>
+    <h1>Insights</h1>
 </header>
 
 <div class="page active">
@@ -111,7 +105,21 @@ async function verificarAuth() {
     if (!user) window.location.href = 'login.html';
 }
 
-const VERDE = '#2A9D8F';
+// ---- estilo dos gráficos: Inter, grelha discreta, barras a animar em ~600 ms ----
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = '#475569';
+Chart.defaults.animation.duration = 600;
+Chart.defaults.animation.easing = 'easeOutQuart';
+
+// gradiente vertical #0D9488 -> #6366F1 (de baixo para cima), ajustado à área do gráfico
+function gradienteBarra(ctx, area, alfa) {
+    const g = ctx.createLinearGradient(0, area.bottom, 0, area.top);
+    g.addColorStop(0, 'rgba(13,148,136,' + alfa + ')');
+    g.addColorStop(1, 'rgba(99,102,241,' + alfa + ')');
+    return g;
+}
+
 let datas = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -156,8 +164,8 @@ function opcoesBarras(max) {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-            y: { beginAtZero: true, suggestedMax: max, ticks: { stepSize: 1, precision: 0 }, grid: { color: '#F3F4F6' } },
-            x: { grid: { display: false } }
+            y: { beginAtZero: true, suggestedMax: max, ticks: { stepSize: 1, precision: 0 }, grid: { color: 'rgba(15,23,42,0.06)' }, border: { display: false } },
+            x: { grid: { display: false }, border: { display: false }, ticks: { maxRotation: 0, autoSkip: false } }
         }
     };
 }
@@ -173,8 +181,13 @@ function desenharSemanas(semanas) {
             labels: rotulos,
             datasets: [{
                 data: semanas.map(s => s.dias),
-                backgroundColor: semanas.map((s, i) => i === semanas.length - 1 ? VERDE : 'rgba(42,157,143,0.45)'),
-                borderRadius: 6
+                // semana atual (ainda a decorrer) a cheio; as anteriores um pouco mais suaves
+                backgroundColor: c => {
+                    if (!c.chart.chartArea) return 'rgba(13,148,136,0.6)';
+                    return gradienteBarra(c.chart.ctx, c.chart.chartArea, c.dataIndex === semanas.length - 1 ? 1 : 0.65);
+                },
+                borderRadius: 8,
+                borderSkipped: false
             }]
         },
         options: opcoesBarras(7)
@@ -226,8 +239,11 @@ async function carregarFases() {
             labels: nomes,
             datasets: [{
                 data: nomes.map(n => contagem[n]),
-                backgroundColor: nomes.map(n => CicloCalc.FASES_INFO[n].cor),
-                borderRadius: 6
+                backgroundColor: c => c.chart.chartArea
+                    ? gradienteBarra(c.chart.ctx, c.chart.chartArea, 1)
+                    : 'rgba(13,148,136,0.8)',
+                borderRadius: 8,
+                borderSkipped: false
             }]
         },
         options: opcoesBarras(1)

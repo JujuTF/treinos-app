@@ -6,30 +6,32 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Métricas Corporais</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F766E'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
     <style>
         .tabs {
             display: flex;
-            background: var(--branco);
-            border-radius: var(--radius);
+            background: rgba(255, 255, 255, 0.62);
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            border-radius: 999px;
             padding: 4px;
             margin-bottom: 16px;
             box-shadow: var(--sombra);
         }
         .tab-btn {
             flex: 1;
-            padding: 9px 4px;
+            min-height: 44px;
+            padding: 0 4px;
             border: none;
-            border-radius: var(--radius-sm);
+            border-radius: 999px;
             background: none;
-            font-family: 'DM Sans', sans-serif;
-            font-size: 0.82rem;
+            font-size: 14px;
             font-weight: 600;
-            color: var(--cinza-meio);
+            color: var(--tx2);
             cursor: pointer;
-            transition: all 0.15s;
+            transition: transform 0.12s;
         }
-        .tab-btn.active { background: var(--verde); color: white; }
+        .tab-btn:active { transform: scale(0.98); }
+        .tab-btn.active { background: var(--grad); color: #fff; }
         .tab-panel { display: none; }
         .tab-panel.active { display: block; }
 
@@ -40,23 +42,28 @@
         }
 
         .metrica-box {
-            background: var(--fundo);
-            border-radius: var(--radius-sm);
-            padding: 12px;
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.85);
+            border-radius: 20px;
+            padding: 14px 12px;
             text-align: center;
         }
 
         .metrica-box-valor {
-            font-family: 'DM Mono', monospace;
-            font-size: 1.3rem;
+            font-family: var(--fonte-t);
+            font-size: 26px;
             font-weight: 700;
-            color: var(--azul-escuro);
+            letter-spacing: -0.02em;
+            color: var(--tx);
             line-height: 1;
         }
 
         .metrica-box-unidade {
-            font-size: 0.7rem;
-            color: var(--cinza-meio);
+            font-family: var(--fonte);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0;
+            color: var(--tx2);
             margin-left: 0.3em;
         }
 
@@ -65,34 +72,43 @@
             grid-template-columns: 1fr 1fr;
             gap: 0 10px;
         }
-        .form-2col .form-grupo label { font-size: 0.7rem; }
+        .form-2col .form-grupo label { font-size: 11px; }
 
         .metrica-box-label {
-            font-size: 0.72rem;
-            color: var(--cinza-meio);
-            margin-top: 4px;
+            font-size: 13px;
+            color: var(--tx2);
+            margin-top: 8px;
         }
 
         .metrica-box.destaque {
-            background: var(--verde-claro);
+            background: linear-gradient(140deg, rgba(204, 251, 241, 0.92), rgba(224, 231, 255, 0.92));
             grid-column: span 2;
+            padding: 18px 12px;
         }
 
-        .metrica-box.destaque .metrica-box-valor { color: var(--verde); font-size: 2rem; }
+        .metrica-box.destaque .metrica-box-valor {
+            font-size: 48px;
+            background: linear-gradient(90deg, #0F766E, #4338CA);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: var(--teal-d);
+            -webkit-text-fill-color: transparent;
+        }
+        .metrica-box.destaque .metrica-box-unidade { -webkit-text-fill-color: var(--tx2); font-size: 16px; }
 
         .upload-zone {
-            border: 2px dashed var(--cinza-borda);
-            border-radius: var(--radius);
-            padding: 32px 20px;
+            border: 2px dashed rgba(15, 23, 42, 0.2);
+            border-radius: 20px;
+            padding: 28px 20px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s;
-            background: var(--branco);
+            transition: background 0.2s, border-color 0.2s;
+            background: rgba(255, 255, 255, 0.5);
         }
-        .upload-zone:hover { border-color: var(--verde); background: var(--verde-claro); }
-        .upload-zone-icon { font-size: 2rem; margin-bottom: 8px; }
-        .upload-zone p { color: var(--cinza-meio); font-size: 0.85rem; }
-        .upload-zone strong { color: var(--verde); }
+        .upload-zone:hover { border-color: var(--teal); background: var(--verde-claro); }
+        .upload-zone p { color: var(--tx2); font-size: 14px; }
+        .upload-zone strong { color: var(--teal-d); }
+        .upload-zone svg { width: 32px; height: 32px; color: var(--teal-d); margin-bottom: 8px; }
 
         .evolucao-item {
             display: flex;
@@ -103,54 +119,72 @@
         }
         .evolucao-item:last-child { border-bottom: none; }
 
-        .evolucao-data { font-size: 0.8rem; color: var(--cinza-meio); }
+        .evolucao-data { font-size: 13px; color: var(--tx2); }
         .evolucao-valor {
-            font-family: 'DM Mono', monospace;
-            font-size: 0.9rem;
+            font-family: var(--fonte-t);
+            font-size: 17px;
             font-weight: 700;
-            color: var(--azul-escuro);
+            color: var(--tx);
         }
         .evolucao-diff {
-            font-size: 0.75rem;
+            font-size: 12px;
             font-weight: 600;
-            padding: 2px 6px;
+            padding: 2px 8px;
             border-radius: 99px;
         }
-        .diff-pos { background: #FEE2E2; color: #DC2626; }
-        .diff-neg { background: var(--verde-claro); color: var(--verde); }
-        .diff-zero { background: var(--cinza-claro); color: var(--cinza-meio); }
+        .diff-pos { background: #FEE2E2; color: #B91C1C; }
+        .diff-neg { background: var(--verde-claro); color: var(--teal-d); }
+        .diff-zero { background: var(--cinza-claro); color: var(--tx2); }
+
+        .guia-msg {
+            display: block;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid var(--linha);
+            border-radius: 16px;
+            padding: 12px;
+            font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+            font-size: 12px;
+            color: var(--tx);
+        }
+        .select-metrica {
+            width: 100%;
+            min-height: 44px;
+            padding: 0 16px;
+            border: 1px solid var(--linha);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            color: var(--tx);
+        }
+        .preview-linha {
+            display: flex; justify-content: space-between; padding: 8px 0;
+            border-bottom: 1px solid var(--cinza-claro); font-size: 14px;
+        }
+        .preview-linha b { font-family: var(--fonte-t); font-weight: 700; }
     </style>
 </head>
 <body>
 
 <header class="header">
-    <div style="display:flex; align-items:center; gap:10px;">
-        <a href="index.html" style="color:var(--cinza-meio); display:flex;">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M15 19l-7-7 7-7"/>
-            </svg>
-        </a>
-        <h1>Corpo</h1>
-    </div>
+    <h1>Corpo</h1>
 </header>
 
 <div class="page active">
 
     <div class="tabs">
-        <button class="tab-btn active" onclick="mudarTab('resumo')">📊 Resumo</button>
-        <button class="tab-btn" onclick="mudarTab('importar')">📥 Importar</button>
-        <button class="tab-btn" onclick="mudarTab('evolucao')">📈 Evolução</button>
+        <button class="tab-btn active" onclick="mudarTab('resumo')">Resumo</button>
+        <button class="tab-btn" onclick="mudarTab('importar')">Importar</button>
+        <button class="tab-btn" onclick="mudarTab('evolucao')">Evolução</button>
     </div>
 
     <!-- TAB RESUMO -->
     <div class="tab-panel active" id="tab-resumo">
         <button class="btn btn-primario" style="margin-bottom:12px;" onclick="abrirRegisto()">+ Registo</button>
-        <div id="ultima-pesagem" style="font-size:0.82rem; color:var(--cinza-meio); margin:0 2px 12px;" hidden></div>
+        <div id="ultima-pesagem" style="font-size:13px; color:var(--tx2); margin:0 2px 12px;" hidden></div>
         <div id="resumo-content">
             <div class="card" style="text-align:center; padding:32px;">
-                <div style="font-size:2rem; margin-bottom:8px;">⚖️</div>
-                <div style="font-weight:600; color:var(--azul-escuro);">Sem dados ainda</div>
-                <div style="font-size:0.85rem; color:var(--cinza-meio); margin-top:6px;">Importa o teu primeiro registo da balança.</div>
+                <div style="font-family:var(--fonte-t); font-size:20px; font-weight:700; color:var(--tx);">Sem dados ainda</div>
+                <div style="font-size:14px; color:var(--tx2); margin-top:6px;">Importa o teu primeiro registo da balança.</div>
                 <button class="btn btn-primario" style="margin-top:16px;" onclick="mudarTab('importar')">Importar agora</button>
             </div>
         </div>
@@ -160,12 +194,12 @@
     <div class="tab-panel" id="tab-importar">
         <div class="card">
             <div class="card-titulo">Importar da balança</div>
-            <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:14px;">
+            <p style="font-size:14px; color:var(--tx2); margin-bottom:14px;">
                 Pede ao Claude para gerar o ficheiro de métricas com os valores da tua balança Prozis Sensit, e carrega aqui o <code>.md</code> gerado.
             </p>
 
             <div class="upload-zone" onclick="document.getElementById('file-metricas').click()">
-                <div class="upload-zone-icon">📄</div>
+                <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L7 8m5-5l5 5M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4"/></svg>
                 <p><strong>Clica para carregar o ficheiro .md</strong><br>gerado pelo Claude com os teus dados</p>
             </div>
             <input type="file" id="file-metricas" accept=".md,.txt" style="display:none" onchange="lerFicheiroMetricas(this)">
@@ -176,15 +210,15 @@
             <div id="preview-conteudo"></div>
             <div style="display:flex; gap:8px; margin-top:14px;">
                 <button class="btn btn-secundario" style="flex:1;" onclick="cancelarImportacao()">Cancelar</button>
-                <button class="btn btn-primario" style="flex:2;" onclick="confirmarImportacao()">✓ Importar</button>
+                <button class="btn btn-primario" style="flex:2;" onclick="confirmarImportacao()">Importar</button>
             </div>
         </div>
 
-        <div class="card" style="background:var(--fundo); border:1.5px solid var(--cinza-borda);">
+        <div class="card">
             <div class="card-titulo">Como gerar o ficheiro</div>
-            <p style="font-size:0.82rem; color:var(--cinza-meio); line-height:1.6;">
+            <p style="font-size:14px; color:var(--tx2); line-height:1.6;">
                 Envia esta mensagem ao Claude com os teus valores:<br><br>
-                <span style="background:var(--branco); border:1px solid var(--cinza-borda); border-radius:var(--radius-sm); padding:10px; display:block; font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--cinza-texto);">
+                <span class="guia-msg">
                     Gera o ficheiro de métricas corporais com estes valores da minha balança Prozis Sensit:<br><br>
                     Peso: [valor] kg<br>
                     IMC: [valor]<br>
@@ -213,16 +247,16 @@
         <div class="card">
             <div class="card-titulo">Histórico completo</div>
             <div style="margin-bottom:10px;">
-                <select id="metrica-selector" onchange="renderHistorico()" style="width:100%; padding:8px 10px; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); font-family:'DM Sans',sans-serif; font-size:0.9rem; outline:none;">
-                    <option value="peso_kg">⚖️ Peso (kg)</option>
-                    <option value="gordura_corporal">🔥 Gordura corporal (%)</option>
-                    <option value="massa_muscular">💪 Massa muscular (kg)</option>
-                    <option value="gordura_visceral">⚠️ Gordura visceral</option>
-                    <option value="agua_corporal">💧 Água corporal (%)</option>
-                    <option value="imc">📐 IMC</option>
-                    <option value="idade_metabolica">⚡ Idade metabólica</option>
-                    <option value="massa_ossea">🦴 Massa óssea (kg)</option>
-                    <option value="tmb">🔥 TMB (kcal)</option>
+                <select id="metrica-selector" class="select-metrica" onchange="renderHistorico()">
+                    <option value="peso_kg">Peso (kg)</option>
+                    <option value="gordura_corporal">Gordura corporal (%)</option>
+                    <option value="massa_muscular">Massa muscular (kg)</option>
+                    <option value="gordura_visceral">Gordura visceral</option>
+                    <option value="agua_corporal">Água corporal (%)</option>
+                    <option value="imc">IMC</option>
+                    <option value="idade_metabolica">Idade metabólica</option>
+                    <option value="massa_ossea">Massa óssea (kg)</option>
+                    <option value="tmb">TMB (kcal)</option>
                 </select>
             </div>
             <div id="historico-lista">A carregar...</div>
@@ -246,7 +280,7 @@
             <input type="text" inputmode="decimal" id="r-peso" placeholder="ex: 68,5" autocomplete="off">
         </div>
 
-        <div style="font-size:0.75rem; color:var(--cinza-meio); margin:4px 0 10px;">Opcional</div>
+        <div style="font-size:13px; color:var(--tx2); margin:4px 0 10px;">Opcional</div>
         <div class="form-2col">
             <div class="form-grupo"><label>IMC</label><input type="text" inputmode="decimal" id="r-imc" autocomplete="off"></div>
             <div class="form-grupo"><label>Gordura corporal (%)</label><input type="text" inputmode="decimal" id="r-gordura" autocomplete="off"></div>
@@ -407,55 +441,55 @@ function renderResumo() {
             <div class="metrica-grid">
                 <div class="metrica-box destaque">
                     <div class="metrica-box-valor">${fmt(u.peso_kg, 1)}<span class="metrica-box-unidade">kg</span></div>
-                    <div class="metrica-box-label">⚖️ Peso ${diff('peso_kg', false)}</div>
+                    <div class="metrica-box-label">Peso ${diff('peso_kg', false)}</div>
                 </div>
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.gordura_corporal, 1)}<span class="metrica-box-unidade">%</span></div>
-                    <div class="metrica-box-label">🔥 Gordura corporal ${diff('gordura_corporal', false)}</div>
+                    <div class="metrica-box-label">Gordura corporal ${diff('gordura_corporal', false)}</div>
                 </div>
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.massa_muscular, 1)}<span class="metrica-box-unidade">kg</span></div>
-                    <div class="metrica-box-label">💪 Massa muscular ${diff('massa_muscular', true)}</div>
+                    <div class="metrica-box-label">Massa muscular ${diff('massa_muscular', true)}</div>
                 </div>
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.gordura_visceral, 0)}</div>
-                    <div class="metrica-box-label">⚠️ Gordura visceral ${diff('gordura_visceral', false)}</div>
+                    <div class="metrica-box-label">Gordura visceral ${diff('gordura_visceral', false)}</div>
                 </div>
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.agua_corporal, 1)}<span class="metrica-box-unidade">%</span></div>
-                    <div class="metrica-box-label">💧 Água corporal ${diff('agua_corporal', true)}</div>
+                    <div class="metrica-box-label">Água corporal ${diff('agua_corporal', true)}</div>
                 </div>
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.imc, 1)}</div>
-                    <div class="metrica-box-label">📐 IMC ${diff('imc', false)}</div>
+                    <div class="metrica-box-label">IMC ${diff('imc', false)}</div>
                 </div>
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.idade_metabolica, 0)}<span class="metrica-box-unidade">anos</span></div>
-                    <div class="metrica-box-label">⚡ Idade metabólica ${diff('idade_metabolica', false)}</div>
+                    <div class="metrica-box-label">Idade metabólica ${diff('idade_metabolica', false)}</div>
                 </div>
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.massa_ossea, 1)}<span class="metrica-box-unidade">kg</span></div>
-                    <div class="metrica-box-label">🦴 Massa óssea ${diff('massa_ossea', true)}</div>
+                    <div class="metrica-box-label">Massa óssea ${diff('massa_ossea', true)}</div>
                 </div>
                 ${u.tmb ? `
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.tmb, 0)}<span class="metrica-box-unidade">kcal</span></div>
-                    <div class="metrica-box-label">🔥 TMB</div>
+                    <div class="metrica-box-label">TMB</div>
                 </div>` : ''}
                 ${u.proteinas ? `
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.proteinas, 1)}<span class="metrica-box-unidade">%</span></div>
-                    <div class="metrica-box-label">🥩 Proteínas</div>
+                    <div class="metrica-box-label">Proteínas</div>
                 </div>` : ''}
                 ${u.gordura_subcutanea ? `
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.gordura_subcutanea, 1)}<span class="metrica-box-unidade">%</span></div>
-                    <div class="metrica-box-label">🔥 Gordura subcutânea</div>
+                    <div class="metrica-box-label">Gordura subcutânea</div>
                 </div>` : ''}
                 ${u.musculo_esqueletico ? `
                 <div class="metrica-box">
                     <div class="metrica-box-valor">${fmt(u.musculo_esqueletico, 1)}<span class="metrica-box-unidade">%</span></div>
-                    <div class="metrica-box-label">💪 Músculo esquelético</div>
+                    <div class="metrica-box-label">Músculo esquelético</div>
                 </div>` : ''}
             </div>
         </div>`;
@@ -518,7 +552,7 @@ async function guardarRegisto() {
         .upsert(payload, { onConflict: 'data' });
 
     if (error) {
-        mostrarToast('Erro ao guardar 😕');
+        mostrarToast('Erro ao guardar');
         console.error(error);
         return;
     }
@@ -580,24 +614,24 @@ function mostrarPreview() {
     const data = new Date(d.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const campos = [
-        ['⚖️ Peso', d.peso_kg, 'kg', 1],
-        ['📐 IMC', d.imc, '', 1],
-        ['🔥 Gordura corporal', d.gordura_corporal, '%', 1],
-        ['⚠️ Gordura visceral', d.gordura_visceral, '', 0],
-        ['💪 Massa muscular', d.massa_muscular, 'kg', 1],
-        ['💧 Água corporal', d.agua_corporal, '%', 1],
-        ['⚡ Idade metabólica', d.idade_metabolica, 'anos', 0],
-        ['🦴 Massa óssea', d.massa_ossea, 'kg', 1],
-        ['🔥 TMB', d.tmb, 'kcal', 0],
-        ['🥩 Proteínas', d.proteinas, '%', 1],
+        ['Peso', d.peso_kg, 'kg', 1],
+        ['IMC', d.imc, '', 1],
+        ['Gordura corporal', d.gordura_corporal, '%', 1],
+        ['Gordura visceral', d.gordura_visceral, '', 0],
+        ['Massa muscular', d.massa_muscular, 'kg', 1],
+        ['Água corporal', d.agua_corporal, '%', 1],
+        ['Idade metabólica', d.idade_metabolica, 'anos', 0],
+        ['Massa óssea', d.massa_ossea, 'kg', 1],
+        ['TMB', d.tmb, 'kcal', 0],
+        ['Proteínas', d.proteinas, '%', 1],
     ].filter(([,v]) => v !== null);
 
     document.getElementById('preview-conteudo').innerHTML = `
-        <div style="font-weight:600; margin-bottom:10px; color:var(--azul-escuro);">${data}</div>
+        <div style="font-family:var(--fonte-t); font-weight:700; font-size:18px; margin-bottom:10px; color:var(--tx);">${data}</div>
         ${campos.map(([label, val, un, casas]) => `
-            <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--cinza-claro); font-size:0.85rem;">
+            <div class="preview-linha">
                 <span>${label}</span>
-                <span style="font-family:'DM Mono',monospace; font-weight:600;">${fmt(val, casas)}${un ? ' ' + un : ''}</span>
+                <b>${fmt(val, casas)}${un ? ' ' + un : ''}</b>
             </div>`).join('')}`;
 
     document.getElementById('preview-importacao').style.display = 'block';
@@ -617,7 +651,7 @@ async function confirmarImportacao() {
         .upsert(dadosParaImportar, { onConflict: 'data' });
 
     if (error) {
-        mostrarToast('Erro ao importar 😕');
+        mostrarToast('Erro ao importar');
         console.error(error);
         return;
     }
@@ -640,6 +674,27 @@ function renderGraficoPeso() {
     );
     const pesos = [...dadosMetricas].reverse().map(d => d.peso_kg);
 
+    // paleta #0D9488 -> #6366F1: linha na horizontal, área na vertical
+    Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+    Chart.defaults.font.size = 12;
+    Chart.defaults.color = '#475569';
+    const linhaGrad = c => {
+        const a = c.chart.chartArea;
+        if (!a) return '#0D9488';
+        const g = c.chart.ctx.createLinearGradient(a.left, 0, a.right, 0);
+        g.addColorStop(0, '#0D9488');
+        g.addColorStop(1, '#6366F1');
+        return g;
+    };
+    const areaGrad = c => {
+        const a = c.chart.chartArea;
+        if (!a) return 'rgba(13,148,136,0.10)';
+        const g = c.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom);
+        g.addColorStop(0, 'rgba(99,102,241,0.22)');
+        g.addColorStop(1, 'rgba(13,148,136,0)');
+        return g;
+    };
+
     graficoPeso = new Chart(ctx, {
         type: 'line',
         data: {
@@ -647,16 +702,20 @@ function renderGraficoPeso() {
             datasets: [{
                 label: 'Peso (kg)',
                 data: pesos,
-                borderColor: '#2A9D8F',
-                backgroundColor: 'rgba(42,157,143,0.08)',
-                pointBackgroundColor: '#2A9D8F',
+                borderColor: linhaGrad,
+                borderWidth: 3,
+                backgroundColor: areaGrad,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#4F46E5',
+                pointBorderWidth: 2,
                 pointRadius: 4,
-                tension: 0.3,
+                tension: 0.35,
                 fill: true
             }]
         },
         options: {
             responsive: true,
+            animation: { duration: 600, easing: 'easeOutQuart' },
             locale: 'pt-PT',
             plugins: {
                 legend: { display: false },
@@ -669,10 +728,11 @@ function renderGraficoPeso() {
             scales: {
                 y: {
                     beginAtZero: false,
-                    grid: { color: '#F3F4F6' },
+                    grid: { color: 'rgba(15,23,42,0.06)' },
+                    border: { display: false },
                     ticks: { callback: v => fmt(v, 1) }
                 },
-                x: { grid: { display: false } }
+                x: { grid: { display: false }, border: { display: false } }
             }
         }
     });
