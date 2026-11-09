@@ -36,72 +36,9 @@
     <!-- Acesso rápido — dinâmico -->
     <div id="treino-hoje-card" style="margin-bottom:12px;"></div>
 
-    <!-- Coach motivacional -->
-    <div id="coach-card" class="card" style="border-left:4px solid var(--verde); background:var(--verde-claro);"></div>
 
     <!-- Resumo da semana -->
     <div id="resumo-semana" style="margin-bottom:4px;"></div>
-
-    <!-- Botão gerar treino -->
-    <div id="btn-gerar-wrap" style="margin-bottom:12px;">
-        <button id="btn-gerar-treino" class="btn btn-primario" style="font-size:1rem; padding:16px 20px; width:100%;" onclick="gerarTreinoHoje()">
-            ⚡ Gerar treino de hoje com Claude
-        </button>
-        <div style="text-align:center; margin-top:6px;">
-            <a href="sessao.html" style="font-size:0.78rem; color:var(--cinza-meio);">ou importar ficheiro .md manualmente →</a>
-        </div>
-    </div>
-
-    <!-- Atalhos rápidos -->
-    <div style="display:flex; gap:8px; margin-bottom:12px;">
-        <a href="benchmarks.html" class="btn btn-secundario" style="flex:1; justify-content:center; font-size:0.82rem; padding:10px;">
-            🏆 Benchmarks
-        </a>
-        <a href="stats.html" class="btn btn-secundario" style="flex:1; justify-content:center; font-size:0.82rem; padding:10px;">
-            📊 Estatísticas
-        </a>
-        <a href="corpo.html" class="btn btn-secundario" style="flex:1; justify-content:center; font-size:0.82rem; padding:10px;">
-            ⚖️ Métricas
-        </a>
-    </div>
-
-    <div class="widgets" id="widgets-hoje"></div>
-
-    <!-- Registo rápido do dia -->
-    <div class="card">
-        <div class="card-titulo">Como estás hoje?</div>
-
-        <div class="form-grupo" style="margin-bottom:10px;">
-            <label>Energia</label>
-            <div class="energia-picker" id="energia-picker">
-                <button class="energia-btn" data-val="1" title="Muito baixa">😴</button>
-                <button class="energia-btn" data-val="2" title="Baixa">😑</button>
-                <button class="energia-btn" data-val="3" title="Ok">🙂</button>
-                <button class="energia-btn" data-val="4" title="Bem">💪</button>
-                <button class="energia-btn" data-val="5" title="Excelente">🔥</button>
-            </div>
-        </div>
-
-        <div class="form-grupo" style="margin-bottom:10px;">
-            <label>Sono</label>
-            <div class="sono-input-wrap">
-                <input type="number" id="sono-horas" min="0" max="24" step="0.5" placeholder="7.5">
-                <span style="color:var(--cinza-meio); font-size:0.9rem;">horas</span>
-            </div>
-        </div>
-
-        <div class="toggle-row">
-            <span class="toggle-label">🌪️ Flare de fibromialgia</span>
-            <label class="toggle">
-                <input type="checkbox" id="flare-toggle">
-                <span class="toggle-slider"></span>
-            </label>
-        </div>
-
-        <button class="btn btn-primario" style="margin-top:14px;" onclick="guardarDiario()">
-            Guardar dia
-        </button>
-    </div>
 
     <!-- Hidratação -->
     <div class="card">
@@ -133,95 +70,12 @@
 
 </section>
 
-<!-- ============================
-     TREINOS
-============================ -->
-<section class="page" id="page-treinos">
-    <div class="secao-header">
-        <span class="secao-titulo">Treinos</span>
-        <button class="btn btn-primario" style="width:auto; padding:10px 16px;" onclick="window.location.href='sessao.html'">
-            + Nova sessão
-        </button>
-    </div>
-
-    <div id="lista-sessoes">
-        <div class="card">
-            <div class="vazio">
-                <div class="vazio-icon">🏋️</div>
-                <p>Ainda sem sessões registadas.<br>Começa hoje!</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- ============================
-     MÉTRICAS
-============================ -->
-<section class="page" id="page-metricas">
-    <div class="secao-header">
-        <span class="secao-titulo">Corpo</span>
-        <button class="btn btn-secundario" style="width:auto; padding:10px 16px;" onclick="abrirModalMetricas()">
-            + Registo
-        </button>
-    </div>
-
-    <!-- Último registo -->
-    <div class="card" id="ultimo-registo-corpo">
-        <div class="card-titulo">Último registo</div>
-        <div style="color:var(--cinza-meio); font-size:0.9rem;">Sem dados ainda.</div>
-    </div>
-
-    <!-- Gráfico -->
-    <div class="card">
-        <div class="card-titulo">Evolução do peso</div>
-        <canvas id="grafico-peso" height="160"></canvas>
-    </div>
-</section>
-
-<!-- ============================
-     CICLO
-============================ -->
-<section class="page" id="page-ciclo">
-    <div class="secao-header">
-        <span class="secao-titulo">Ciclo</span>
-        <button class="btn btn-secundario" style="width:auto; padding:10px 16px;" onclick="abrirModalCiclo()">
-            + Registo
-        </button>
-    </div>
-
-    <div class="card" id="ciclo-fase-card">
-        <div class="card-titulo">Fase atual</div>
-        <div id="ciclo-fase-detalhe" style="color:var(--cinza-meio); font-size:0.9rem;">A calcular...</div>
-    </div>
-
-    <div class="card">
-        <div class="card-titulo">Histórico</div>
-        <div id="ciclo-historico" style="color:var(--cinza-meio); font-size:0.9rem;">Sem registos.</div>
-    </div>
-</section>
-
-<!-- ============================
-     NAV BOTTOM
-============================ -->
 <nav class="nav-bottom">
-    <a class="nav-item active" href="#" onclick="mudarPagina('dashboard', this)">
+    <a class="nav-item active" href="index.html">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
         </svg>
         Hoje
-    </a>
-    <a class="nav-item" href="sessao.html">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/>
-            <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-        Treinos
-    </a>
-    <a class="nav-item" href="saude.html">
-        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-        </svg>
-        Saúde
     </a>
     <a class="nav-item" href="ciclo.html">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -229,139 +83,19 @@
         </svg>
         Ciclo
     </a>
-    <a class="nav-item" href="corpo.html">
+    <a class="nav-item" href="stats.html">
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        Insights
+    </a>
+    <a class="nav-item" href="corpo.html">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
         </svg>
         Corpo
     </a>
 </nav>
-
-<!-- ============================
-     MODAL — NOVA SESSÃO
-============================ -->
-<div class="modal-overlay" id="modal-sessao">
-    <div class="modal">
-        <div class="modal-titulo">Nova sessão de treino</div>
-
-        <div class="form-grupo">
-            <label>Data</label>
-            <input type="date" id="s-data">
-        </div>
-        <div class="form-grupo">
-            <label>Nome do treino</label>
-            <input type="text" id="s-nome" placeholder="ex: Chipper, AMRAP A, Força...">
-        </div>
-        <div class="form-grupo">
-            <label>Tipo</label>
-            <select id="s-tipo">
-                <option value="WOD">WOD</option>
-                <option value="Força">Força</option>
-                <option value="Cardio">Cardio</option>
-                <option value="Mobilidade">Mobilidade</option>
-                <option value="Outro">Outro</option>
-            </select>
-        </div>
-        <div class="form-grupo">
-            <label>Tempo (minutos:segundos)</label>
-            <input type="text" id="s-tempo" placeholder="ex: 9:02">
-        </div>
-        <div class="form-grupo">
-            <label>Rounds completos</label>
-            <input type="number" id="s-rounds" min="0" placeholder="ex: 7">
-        </div>
-        <div class="form-grupo">
-            <label>Notas</label>
-            <textarea id="s-notas" placeholder="Como correu? Pesos usados, sensações..."></textarea>
-        </div>
-
-        <div style="display:flex; gap:10px;">
-            <button class="btn btn-secundario" style="flex:1;" onclick="fecharModal('modal-sessao')">Cancelar</button>
-            <button class="btn btn-primario" style="flex:2;" onclick="guardarSessao()">Guardar sessão</button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================
-     MODAL — MÉTRICAS CORPORAIS
-============================ -->
-<div class="modal-overlay" id="modal-metricas">
-    <div class="modal">
-        <div class="modal-titulo">Métricas corporais</div>
-
-        <div class="form-grupo">
-            <label>Data</label>
-            <input type="date" id="m-data">
-        </div>
-
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <div class="form-grupo">
-                <label>Peso (kg)</label>
-                <input type="number" step="0.1" id="m-peso" placeholder="68.5">
-            </div>
-            <div class="form-grupo">
-                <label>IMC</label>
-                <input type="number" step="0.1" id="m-imc" placeholder="22.3">
-            </div>
-            <div class="form-grupo">
-                <label>Gordura corporal (%)</label>
-                <input type="number" step="0.1" id="m-gordura" placeholder="28.5">
-            </div>
-            <div class="form-grupo">
-                <label>Gordura visceral</label>
-                <input type="number" id="m-visceral" placeholder="5">
-            </div>
-            <div class="form-grupo">
-                <label>Massa muscular (kg)</label>
-                <input type="number" step="0.1" id="m-muscular" placeholder="45.2">
-            </div>
-            <div class="form-grupo">
-                <label>Água corporal (%)</label>
-                <input type="number" step="0.1" id="m-agua" placeholder="52.1">
-            </div>
-            <div class="form-grupo">
-                <label>Idade metabólica</label>
-                <input type="number" id="m-idade-met" placeholder="32">
-            </div>
-            <div class="form-grupo">
-                <label>Massa óssea (kg)</label>
-                <input type="number" step="0.1" id="m-ossea" placeholder="2.3">
-            </div>
-        </div>
-
-        <div style="display:flex; gap:10px; margin-top:4px;">
-            <button class="btn btn-secundario" style="flex:1;" onclick="fecharModal('modal-metricas')">Cancelar</button>
-            <button class="btn btn-primario" style="flex:2;" onclick="guardarMetricas()">Guardar</button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================
-     MODAL — CICLO
-============================ -->
-<div class="modal-overlay" id="modal-ciclo">
-    <div class="modal">
-        <div class="modal-titulo">Registo de ciclo</div>
-
-        <div class="form-grupo">
-            <label>Início do período</label>
-            <input type="date" id="c-inicio">
-        </div>
-        <div class="form-grupo">
-            <label>Fim do período (opcional)</label>
-            <input type="date" id="c-fim">
-        </div>
-        <div class="form-grupo">
-            <label>Notas</label>
-            <textarea id="c-notas" placeholder="Intensidade, sintomas..."></textarea>
-        </div>
-
-        <div style="display:flex; gap:10px;">
-            <button class="btn btn-secundario" style="flex:1;" onclick="fecharModal('modal-ciclo')">Cancelar</button>
-            <button class="btn btn-primario" style="flex:2;" onclick="guardarCiclo()">Guardar</button>
-        </div>
-    </div>
-</div>
 
 <!-- TOAST -->
 <div id="toast"></div>
@@ -369,43 +103,9 @@
 <!-- DEPLOY INFO -->
 <div id="deploy-info" style="text-align:center; padding: 8px; color: var(--cinza-meio); font-size: 0.7rem; margin-bottom: 4px;"></div>
 
-
-<!-- MODAL — GERAR TREINO COM CLAUDE -->
-<div class="modal-overlay" id="modal-gerar-treino">
-    <div class="modal">
-        <div class="modal-titulo">⚡ Gerar treino de hoje</div>
-
-        <div class="form-grupo">
-            <label>Tempo disponível</label>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button class="btn btn-secundario tempo-btn" data-min="30" style="flex:1;" onclick="selecionarTempo(this)">30 min</button>
-                <button class="btn btn-secundario tempo-btn" data-min="45" style="flex:1;" onclick="selecionarTempo(this)">45 min</button>
-                <button class="btn btn-secundario tempo-btn" data-min="60" style="flex:1;" onclick="selecionarTempo(this)">60 min</button>
-                <button class="btn btn-secundario tempo-btn" data-min="90" style="flex:1;" onclick="selecionarTempo(this)">90 min</button>
-            </div>
-            <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
-                <input type="number" id="gerar-tempo-custom" min="10" max="180" placeholder="ou escreve (min)"
-                    style="width:100%; padding:10px 14px; border:1.5px solid var(--cinza-borda); border-radius:var(--radius-sm); font-family:'DM Sans',sans-serif; font-size:0.95rem;">
-            </div>
-        </div>
-
-        <div class="form-grupo">
-            <label>Notas para o Claude <span style="font-weight:400; text-transform:none;">(opcional)</span></label>
-            <textarea id="gerar-notas" placeholder="ex: quero focar em pernas, evitar saltos, tenho dores nas costas..." style="min-height:70px;"></textarea>
-        </div>
-
-        <div style="display:flex; gap:10px;">
-            <button class="btn btn-secundario" style="flex:1;" onclick="fecharModal('modal-gerar-treino')">Cancelar</button>
-            <button class="btn btn-primario" style="flex:2;" onclick="confirmarGerarTreino()">Gerar treino ⚡</button>
-        </div>
-    </div>
-</div>
-
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="js/config.js"></script>
-<script src="js/coach.js"></script>
 <script src="js/app.js"></script>
 
 </body>
