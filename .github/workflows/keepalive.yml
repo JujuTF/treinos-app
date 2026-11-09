@@ -1,0 +1,24 @@
+name: Supabase keepalive
+
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST
+        run: |
+          SUPABASE_URL="https://nvikoplscztfadjhwviz.supabase.co"
+          SUPABASE_KEY="sb_publishable_-ip63oS8NkXXIVsfrSDrhQ_UqdfhaHH"
+          status=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            "$SUPABASE_URL/rest/v1/registo_diario?select=*&limit=1")
+          echo "HTTP status: $status"
+          if [ "$status" != "200" ]; then
+            echo "Keepalive failed" >&2
+            exit 1
+          fi
