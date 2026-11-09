@@ -139,6 +139,12 @@
             line-height: 1;
             color: #DB2777;
         }
+        .linha-privada {
+            display: flex; align-items: center; justify-content: space-between; width: 100%;
+            background: none; border: none; cursor: pointer; padding: 2px 0;
+            font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600;
+            color: var(--cinza-meio);
+        }
         .opcionais-botoes { display: grid; gap: 8px; margin-top: 4px; }
         .opcionais-botoes button {
             padding: 12px 8px;
@@ -247,6 +253,7 @@
         </a>
         <h1>Ciclo Menstrual</h1>
     </div>
+    <button id="btn-discreto" onclick="alternarDiscreto()" style="background:none; border:none; cursor:pointer; color:var(--cinza-meio); padding:4px; display:flex;"></button>
 </header>
 
 <div class="page active">
@@ -279,7 +286,7 @@
         <div class="cal-wrap"><div class="cal-grid" id="cal-grid"></div></div>
         <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; font-size:0.72rem; color:var(--cinza-meio);">
             <span>🔴 Período</span>
-            <span><span style="color:#DB2777;">♥</span> Relações</span>
+            <span class="leg-relacao"><span style="color:#DB2777;">♥</span> Relações</span>
             <span class="leg-estimativa" style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;border:2px dashed #FCA5A5;border-radius:50%;"></span> Previsão</span>
             <span class="leg-estimativa" style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#FEF08A;border-radius:50%;"></span> Janela fértil</span>
             <span class="leg-estimativa" style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#EAB308;border-radius:50%;"></span> Ovulação estimada</span>
@@ -303,14 +310,19 @@
 
     <!-- REGISTOS OPCIONAIS -->
     <div class="card">
-        <div class="card-titulo">Registos opcionais</div>
-        <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:12px;">
-            Aplicam-se ao dia selecionado no calendário: <strong id="opcionais-dia"></strong>
-        </p>
-        <div class="opcionais-botoes">
-            <button id="btn-relacoes" onclick="alternarRelacoes()">♥ Relações</button>
-            <button onclick="registarGravidez()">Teste de gravidez positivo</button>
-            <button onclick="pedirPerda()">Perda</button>
+        <button class="linha-privada" id="opcionais-toggle" onclick="alternarPrivado('opcionais')" hidden>
+            <span>🔒 Registos privados</span><span id="opcionais-seta">▾</span>
+        </button>
+        <div id="opcionais-corpo">
+            <div class="card-titulo">Registos opcionais</div>
+            <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:12px;">
+                Aplicam-se ao dia selecionado no calendário: <strong id="opcionais-dia"></strong>
+            </p>
+            <div class="opcionais-botoes">
+                <button id="btn-relacoes" onclick="alternarRelacoes()">♥ Relações</button>
+                <button onclick="registarGravidez()">Teste de gravidez positivo</button>
+                <button onclick="pedirPerda()">Perda</button>
+            </div>
         </div>
     </div>
 
@@ -319,8 +331,13 @@
         <div class="card-titulo">Histórico de ciclos</div>
         <div id="historico-ciclos" style="color:var(--cinza-meio); font-size:0.9rem;">A carregar...</div>
         <div id="historico-eventos-wrap" style="display:none; margin-top:16px;">
-            <div class="card-titulo">Registos opcionais</div>
-            <div id="historico-eventos" style="font-size:0.9rem;"></div>
+            <button class="linha-privada" id="historico-toggle" onclick="alternarPrivado('historico')" hidden>
+                <span>🔒 Registos privados</span><span id="historico-seta">▾</span>
+            </button>
+            <div id="historico-eventos-corpo">
+                <div class="card-titulo">Registos opcionais</div>
+                <div id="historico-eventos" style="font-size:0.9rem;"></div>
+            </div>
         </div>
     </div>
 
@@ -370,6 +387,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
 <script src="js/ciclo-calc.js"></script>
+<script src="js/discreto.js"></script>
 <script>
 
 async function verificarAuth() {
@@ -381,6 +399,9 @@ verificarAuth();
 // ---- ESTADO ----
 let ciclos = [];
 let eventos = []; // ciclo_eventos (relacao | gravidez | perda | teste_ovulacao)
+// Modo discreto: secções privadas começam sempre fechadas
+let abertos = { opcionais: false, historico: false };
+let gravidezVisivel = false;
 let mesAtual = new Date();
 let dataSelecionada = CicloCalc.hojeLocal();
 let cicloAberto = null; // ciclo com início mas sem fim
@@ -402,6 +423,8 @@ function mostrarToast(msg) {
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('data-selecionada').value = hoje();
     dataSelecionada = hoje();
+    atualizarIconeDiscreto();
+    aplicarDiscretoUI();
     await carregarCiclos();
 });
 
@@ -438,7 +461,58 @@ function renderTudo() {
     renderHistorico();
     renderEventos();
     atualizarBotoesRegisto();
+    aplicarDiscretoUI();
 }
+
+// ---- modo discreto ----
+const ICONE_OLHO = '<svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const ICONE_OLHO_FECHADO = '<svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><path d="M1 1l22 22"/></svg>';
+
+function atualizarIconeDiscreto() {
+    const btn = document.getElementById('btn-discreto');
+    const on = Discreto.ativo();
+    btn.innerHTML = on ? ICONE_OLHO_FECHADO : ICONE_OLHO;
+    btn.title = on ? 'Modo discreto ligado' : 'Modo discreto desligado';
+    btn.setAttribute('aria-label', btn.title + ' (tocar para alterar)');
+    btn.style.color = on ? 'var(--verde)' : 'var(--cinza-meio)';
+}
+
+function fecharPrivados() {
+    abertos = { opcionais: false, historico: false };
+    gravidezVisivel = false;
+}
+
+function alternarDiscreto() {
+    const ligado = Discreto.alternar();
+    fecharPrivados();
+    atualizarIconeDiscreto();
+    renderTudo();
+    mostrarToast(ligado ? 'Modo discreto ligado' : 'Modo discreto desligado');
+}
+
+function alternarPrivado(qual) {
+    abertos[qual] = !abertos[qual];
+    aplicarDiscretoUI();
+}
+
+function aplicarDiscretoUI() {
+    const d = Discreto.ativo();
+    [['opcionais', 'opcionais-toggle', 'opcionais-corpo', 'opcionais-seta'],
+     ['historico', 'historico-toggle', 'historico-eventos-corpo', 'historico-seta']]
+    .forEach(([chave, idToggle, idCorpo, idSeta]) => {
+        document.getElementById(idToggle).hidden = !d;
+        document.getElementById(idCorpo).hidden = d && !abertos[chave];
+        document.getElementById(idSeta).textContent = abertos[chave] ? '▴' : '▾';
+    });
+}
+
+// Ao passar a segundo plano, volta a fechar tudo o que é privado
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+        fecharPrivados();
+        renderTudo();
+    }
+});
 
 // Modo gravidez: devolve { evento, g } quando ativo, senão null
 function gravidezAtiva() {
@@ -480,11 +554,24 @@ function renderFaseAtual() {
 
     const gr = gravidezAtiva();
     if (gr) {
+        const discreto = Discreto.ativo();
+        if (discreto && !gravidezVisivel) {
+            // texto neutro até tocar em "Mostrar"
+            const dia = gr.g ? gr.g.totalDias + 1 : null;
+            el.innerHTML = `
+                <div class="card-titulo">Ciclo</div>
+                <div style="font-weight:700; font-size:1.1rem; color:var(--azul-escuro);">${dia ? 'Ciclo - dia ' + dia : 'Ciclo'}</div>
+                <button class="btn btn-secundario" style="margin-top:14px;" onclick="mostrarGravidez(true)">Mostrar</button>`;
+            return;
+        }
         el.innerHTML = `
             <div class="card-titulo">Gravidez</div>
             <div style="font-weight:700; font-size:1.2rem; color:var(--azul-escuro);">${CicloCalc.textoGravidez(gr.g)}</div>
             <div style="font-size:0.82rem; color:var(--cinza-meio); margin-top:6px;">${CicloCalc.TEXTO_GRAVIDEZ}</div>
-            <button class="btn btn-secundario" style="margin-top:14px;" onclick="pedirTerminarGravidez()">Terminar modo gravidez</button>`;
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
+                <button class="btn btn-secundario" style="width:auto;" onclick="pedirTerminarGravidez()">Terminar modo gravidez</button>
+                ${discreto ? '<button class="btn btn-secundario" style="width:auto;" onclick="mostrarGravidez(false)">Ocultar</button>' : ''}
+            </div>`;
         return;
     }
 
@@ -620,7 +707,12 @@ function renderCalendario() {
     );
 
     const emGravidez = !!gravidezAtiva();
-    const diasRelacoes = new Set(eventos.filter(e => e.tipo === 'relacao').map(e => e.data));
+    const discreto = Discreto.ativo();
+    // modo discreto: sem marcadores de eventos
+    const diasRelacoes = discreto
+        ? new Set()
+        : new Set(eventos.filter(e => e.tipo === 'relacao').map(e => e.data));
+    document.querySelectorAll('.leg-relacao').forEach(el => { el.style.display = discreto ? 'none' : 'inline'; });
 
     for (let d = 1; d <= ultimoDia; d++) {
         const dataStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -813,6 +905,11 @@ function diaValido() {
     return dia;
 }
 
+function mostrarGravidez(visivel) {
+    gravidezVisivel = visivel;
+    renderFaseAtual();
+}
+
 // ---- ações ----
 async function guardarEvento(tipo, data) {
     const { error } = await db.from('ciclo_eventos').insert({ data, tipo });
@@ -842,6 +939,13 @@ async function registarGravidez() {
     if (!dia) return;
     if (gravidezAtiva()) { mostrarToast('O modo gravidez já está ativo'); return; }
     if (eventosDoDia(dia, 'gravidez').length) { mostrarToast('Já está registado neste dia'); return; }
+
+    const ok = await pedirConfirmacao(
+        'Registar teste',
+        `Registar teste de gravidez positivo em ${formatarDataLonga(dia)}?`,
+        'Registar'
+    );
+    if (!ok) return;
 
     if (!(await guardarEvento('gravidez', dia))) return;
     mostrarToast('Registado ✓');
@@ -907,8 +1011,15 @@ async function pedirApagarEvento(id) {
 function renderEventos() {
     const wrap = document.getElementById('historico-eventos-wrap');
     const el = document.getElementById('historico-eventos');
-    if (!eventos.length) { wrap.style.display = 'none'; el.innerHTML = ''; return; }
+    // Em modo discreto a linha "Registos privados" aparece sempre (mesmo sem eventos),
+    // para a sua presença não revelar nada.
+    if (!eventos.length && !Discreto.ativo()) { wrap.style.display = 'none'; el.innerHTML = ''; return; }
     wrap.style.display = 'block';
+
+    if (!eventos.length) {
+        el.innerHTML = '<div style="color:var(--cinza-meio); font-size:0.85rem;">Sem registos.</div>';
+        return;
+    }
 
     el.innerHTML = eventos.map(e => {
         const terminado = typeof e.nota === 'string' && e.nota.indexOf(CicloCalc.MARCA_TERMINADA) === 0;

@@ -218,6 +218,18 @@ async function carregarCicloResumido() {
             .order('inicio', { ascending: false })
             .limit(24);
 
+        // Modo discreto: só "Ciclo - dia N" e um link. Nem sequer consulta os eventos,
+        // por isso o aspeto é igual com ou sem gravidez.
+        if (Discreto.ativo()) {
+            const fd = CicloCalc.faseAtual(rows || [], CicloCalc.hojeLocal());
+            container.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                    <div style="font-weight:700; color:var(--azul-escuro);">${fd ? 'Ciclo - dia ' + fd.dia : 'Ciclo'}</div>
+                    <a href="ciclo.html" style="font-size:0.85rem; font-weight:600; color:var(--verde); text-decoration:none;">Ver detalhes</a>
+                </div>`;
+            return;
+        }
+
         // Modo gravidez: esconde janela fértil, ovulação e previsão
         const { data: eventos, error: erroEventos } = await db
             .from('ciclo_eventos')
