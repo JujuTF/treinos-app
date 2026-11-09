@@ -6,39 +6,49 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Ciclo Menstrual</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏋️</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F766E'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
     <style>
+        /* ---- CALENDÁRIO ---- */
         .cal-wrap { overflow: hidden; }
         .cal-nav {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         .cal-nav button {
-            background: none;
-            border: none;
-            font-size: 1.3rem;
+            width: 44px;
+            height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.75);
+            border: 1px solid var(--linha);
+            border-radius: 50%;
+            font-size: 22px;
+            line-height: 1;
             cursor: pointer;
-            color: var(--verde);
-            padding: 4px 10px;
+            color: var(--teal-d);
+            transition: transform 0.12s;
         }
+        .cal-nav button:active { transform: scale(0.98); }
         .cal-mes-label {
+            font-family: var(--fonte-t);
             font-weight: 700;
-            font-size: 1rem;
-            color: var(--azul-escuro);
+            font-size: 18px;
+            color: var(--tx);
         }
         .cal-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
+            gap: 2px 0;
             width: 100%;
         }
         .cal-header-dia {
             text-align: center;
-            font-size: 0.6rem;
+            font-size: 11px;
             font-weight: 600;
-            color: var(--cinza-meio);
+            color: var(--tx2);
             text-transform: uppercase;
             padding: 4px 0;
         }
@@ -49,211 +59,174 @@
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            font-size: 0.75rem;
+            font-size: 14px;
             font-weight: 500;
             cursor: pointer;
             position: relative;
-            transition: all 0.15s;
-            color: var(--cinza-texto);
+            transition: background 0.15s;
+            color: var(--tx);
             min-width: 0;
         }
-        .cal-dia:hover { background: var(--cinza-claro); }
+        .cal-dia:hover { background: rgba(15, 23, 42, 0.06); }
         .cal-dia.vazio { cursor: default; }
+        .cal-dia.vazio:hover { background: none; }
+        .cal-dia.periodo { background: #FECDD3; color: #9F1239; font-weight: 600; }
+        .cal-dia.periodo.inicio { background: #E11D48; color: #fff; }
+        .cal-dia.periodo.fim { background: #FDA4AF; color: #881337; }
+        .cal-dia.janela   { background: #FEF3C7; color: #854D0E; }
+        .cal-dia.ovulacao { background: #F59E0B; color: #451A03; font-weight: 700; }
+        .cal-dia.previsao { border: 2px dashed #FB7185; color: #BE123C; }
         .cal-dia.hoje {
-            border: 2px solid var(--verde);
+            box-shadow: inset 0 0 0 2px var(--teal);
             font-weight: 700;
-            color: var(--verde);
+            color: var(--teal-d);
         }
-        .cal-dia.periodo {
-            background: #FCA5A5;
-            color: #991B1B;
-            font-weight: 700;
-        }
-        .cal-dia.periodo.inicio {
-            background: #EF4444;
-            color: white;
-        }
-        .cal-dia.periodo.fim {
-            background: #F87171;
-            color: white;
-        }
-        .cal-dia.janela   { background: #FEF08A; color: #854D0E; }
-        .cal-dia.ovulacao { background: #EAB308; color: white; font-weight: 700; }
-        .aviso-estimativa { font-size: 0.75rem; color: var(--cinza-meio); margin: 0 4px 12px; }
-        .aviso-fiabilidade {
-            margin-top: 8px; padding: 8px 12px; border-radius: var(--radius-sm);
-            background: #FEF3C7; color: #92400E; font-size: 0.78rem;
-        }
-        .cal-dia.previsao {
-            border: 2px dashed #FCA5A5;
-            color: #EF4444;
+        .cal-dia.sel { outline: 3px solid var(--ind-d); outline-offset: -3px; }
+        .cal-dia.relacao::after {
+            content: '♥';
+            position: absolute;
+            right: 6px; bottom: 3px;
+            font-size: 9px;
+            line-height: 1;
+            color: #BE185D;
         }
 
-        /* LINHA DO TEMPO */
-        .timeline-wrap {
-            position: relative;
-            padding: 8px 0;
+        .aviso-estimativa { font-size: 12px; color: var(--tx2); margin: 0 4px 14px; }
+        .aviso-fiabilidade {
+            margin-top: 12px; padding: 10px 12px; border-radius: 16px;
+            background: #FEF3C7; color: #92400E; font-size: 13px;
         }
+
+        .cal-legenda { margin-top: 12px; display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 12px; color: var(--tx2); }
+        .cal-legenda > span { display: inline-flex; align-items: center; gap: 6px; }
+        .leg-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+        /* ---- POSIÇÃO NO CICLO ---- */
+        .timeline-wrap { position: relative; padding: 8px 0; }
         .timeline-barra {
             display: flex;
-            height: 28px;
-            border-radius: 99px;
-            overflow: hidden;
-            margin-bottom: 6px;
+            height: 20px;
+            border-radius: 999px;
+            animation: revela 0.6s ease-out both;
         }
         .timeline-seg {
             height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.65rem;
-            font-weight: 600;
-            color: white;
-            transition: opacity 0.2s;
+            border: 2px solid transparent;
+            border-radius: 999px;
+            background-clip: padding-box;
+            opacity: 0.6;
         }
         .timeline-marcador {
             position: absolute;
-            top: 0;
-            width: 3px;
-            height: 44px;
-            background: var(--azul-escuro);
-            border-radius: 99px;
+            top: 2px;
+            width: 6px;
+            height: 36px;
+            background: var(--tx);
+            border: 2px solid #fff;
+            border-radius: 999px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.3);
             transform: translateX(-50%);
         }
         .timeline-labels {
             position: relative;
-            height: 1.1em;
-            font-size: 0.62rem;
-            color: var(--cinza-meio);
+            height: 1.2em;
+            font-size: 12px;
+            color: var(--tx2);
             margin-top: 4px;
         }
         .timeline-labels span { position: absolute; top: 0; white-space: nowrap; }
         .timeline-labels .lbl-ini { left: 0; }
         .timeline-labels .lbl-fim { right: 0; }
         .timeline-labels .lbl-ov { transform: translateX(-50%); }
-        .cal-dia.relacao::after {
-            content: '♥';
-            position: absolute;
-            right: 3px; bottom: 0;
-            font-size: 0.5rem;
-            line-height: 1;
-            color: #DB2777;
+        @keyframes revela {
+            from { clip-path: inset(0 100% 0 0 round 999px); }
+            to   { clip-path: inset(0 0 0 0 round 999px); }
         }
-        .linha-privada {
-            display: flex; align-items: center; justify-content: space-between; width: 100%;
-            background: none; border: none; cursor: pointer; padding: 2px 0;
-            font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600;
-            color: var(--cinza-meio);
-        }
-        .opcionais-botoes { display: grid; gap: 8px; margin-top: 4px; }
-        .opcionais-botoes button {
-            padding: 12px 8px;
-            border-radius: var(--radius-sm);
-            border: 1.5px solid var(--cinza-borda);
-            background: var(--branco);
-            font-family: 'DM Sans', sans-serif;
-            font-size: 0.85rem;
+
+        .fase-legenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; }
+        .fase-leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--tx2); }
+        .fase-leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+        /* ---- PREVISÃO ---- */
+        .previsao-titulo { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--tx2); margin-bottom: 8px; }
+        .previsao-data { font-family: var(--fonte-t); font-size: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--tx); line-height: 1.1; }
+        .previsao-dias { font-size: 14px; color: var(--tx2); margin-top: 6px; }
+        .previsao-janela { margin-top: 14px; padding: 12px 14px; border-radius: 20px; background: rgba(254, 243, 199, 0.7); color: #854D0E; font-size: 14px; }
+        .previsao-janela small { display: block; margin-top: 2px; font-size: 13px; }
+
+        /* ---- FASE ATUAL ---- */
+        .fase-topo { display: flex; align-items: center; gap: 14px; }
+        .fase-bola { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; opacity: 0.85; }
+        .fase-nome { font-family: var(--fonte-t); font-weight: 700; font-size: 22px; color: var(--tx); line-height: 1.1; }
+        .fase-meta { font-size: 13px; color: var(--tx2); margin-top: 3px; }
+        .fase-estado { margin-top: 14px; background: rgba(254, 243, 199, 0.7); border-radius: 16px; padding: 10px 14px; font-size: 13px; color: #854D0E; font-weight: 600; }
+
+        /* ---- REGISTOS ---- */
+        .registo-rapido { display: flex; gap: 8px; }
+        .registo-rapido button {
+            flex: 1;
+            min-height: 44px;
+            border-radius: 999px;
+            border: 1px solid var(--linha);
+            background: rgba(255, 255, 255, 0.75);
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            color: var(--cinza-texto);
+            transition: transform 0.12s;
+            color: var(--teal-d);
         }
+        .registo-rapido button:active { transform: scale(0.98); }
+        .registo-rapido button.ativo-inicio { background: #E11D48; border-color: transparent; color: #fff; }
+        .registo-rapido button.ativo-fim { background: var(--grad); border-color: transparent; color: #fff; }
+
+        .linha-privada {
+            display: flex; align-items: center; justify-content: space-between; width: 100%;
+            min-height: 44px;
+            background: none; border: none; cursor: pointer; padding: 2px 0;
+            font-size: 15px; font-weight: 600;
+            color: var(--tx2);
+        }
+        .linha-privada span:first-child { display: inline-flex; align-items: center; gap: 8px; }
+        .linha-privada svg { width: 18px; height: 18px; }
+
+        .opcionais-botoes { display: grid; gap: 8px; margin-top: 4px; }
+        .opcionais-botoes button {
+            min-height: 44px;
+            padding: 0 12px;
+            border-radius: 999px;
+            border: 1px solid var(--linha);
+            background: rgba(255, 255, 255, 0.75);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--teal-d);
+            transition: transform 0.12s;
+        }
+        .opcionais-botoes button:active { transform: scale(0.98); }
         .opcionais-botoes button.ativo-relacao { background: #FCE7F3; border-color: #DB2777; color: #9D174D; }
+
         .evento-linha {
             display: flex; align-items: center; justify-content: space-between; gap: 8px;
             padding: 10px 0; border-bottom: 1px solid var(--cinza-claro);
         }
         .evento-linha button {
-            background: none; border: none; cursor: pointer; color: var(--cinza-meio);
-            font-size: 0.78rem; padding: 4px 8px; font-family: inherit;
-        }
-        .fase-legenda {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .fase-leg-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 0.72rem;
-            color: var(--cinza-meio);
-        }
-        .fase-leg-dot {
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            flex-shrink: 0;
+            min-height: 44px; min-width: 44px;
+            background: none; border: none; cursor: pointer; color: var(--tx2);
+            font-size: 13px; font-weight: 600; padding: 4px 8px;
         }
 
-        /* PREVISÃO */
-        .previsao-card {
-            background: linear-gradient(135deg, #FEF2F2, #FFF);
-            border: 1.5px solid #FECACA;
-            border-radius: var(--radius);
-            padding: 16px;
-            margin-bottom: 12px;
-        }
-        .previsao-titulo {
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: #EF4444;
-            margin-bottom: 8px;
-        }
-        .previsao-data {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--azul-escuro);
-        }
-        .previsao-dias {
-            font-size: 0.85rem;
-            color: var(--cinza-meio);
-            margin-top: 2px;
-        }
-
-        /* REGISTO RÁPIDO */
-        .registo-rapido {
-            display: flex;
-            gap: 8px;
-        }
-        .registo-rapido button {
-            flex: 1;
-            padding: 12px 8px;
-            border-radius: var(--radius-sm);
-            border: 1.5px solid var(--cinza-borda);
-            background: var(--branco);
-            font-family: 'DM Sans', sans-serif;
-            font-size: 0.82rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s;
-            color: var(--cinza-texto);
-        }
-        .registo-rapido button.ativo-inicio {
-            background: #EF4444;
-            border-color: #EF4444;
-            color: white;
-        }
-        .registo-rapido button.ativo-fim {
-            background: var(--verde);
-            border-color: var(--verde);
-            color: white;
-        }
+        .hist-linha { padding: 12px 0; border-bottom: 1px solid var(--cinza-claro); }
+        .hist-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .hist-data { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
+        .hist-data i { width: 10px; height: 10px; border-radius: 50%; background: #E11D48; flex-shrink: 0; }
+        .hist-det { font-size: 13px; color: var(--tx2); margin-top: 3px; }
     </style>
 </head>
 <body>
 
 <header class="header">
-    <div style="display:flex; align-items:center; gap:10px;">
-        <a href="index.html" style="color:var(--cinza-meio); display:flex;">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M15 19l-7-7 7-7"/>
-            </svg>
-        </a>
-        <h1>Ciclo Menstrual</h1>
-    </div>
-    <button id="btn-discreto" onclick="alternarDiscreto()" style="background:none; border:none; cursor:pointer; color:var(--cinza-meio); padding:4px; display:flex;"></button>
+    <h1>Ciclo</h1>
+    <button class="icon-btn" id="btn-discreto" onclick="alternarDiscreto()"></button>
 </header>
 
 <div class="page active">
@@ -263,7 +236,7 @@
     <p class="aviso-estimativa" id="aviso-estimativa">Estimativa com base nos teus registos. Não é um diagnóstico.</p>
 
     <!-- FASE ATUAL -->
-    <div id="fase-atual-wrap" class="card" style="margin-bottom:12px;"></div>
+    <div id="fase-atual-wrap" class="card"></div>
 
     <!-- LINHA DO TEMPO -->
     <div class="card" id="timeline-wrap-card" style="display:none;">
@@ -284,38 +257,38 @@
             <button onclick="mudarMes(1)">›</button>
         </div>
         <div class="cal-wrap"><div class="cal-grid" id="cal-grid"></div></div>
-        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; font-size:0.72rem; color:var(--cinza-meio);">
-            <span>🔴 Período</span>
-            <span class="leg-relacao"><span style="color:#DB2777;">♥</span> Relações</span>
-            <span class="leg-estimativa" style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;border:2px dashed #FCA5A5;border-radius:50%;"></span> Previsão</span>
-            <span class="leg-estimativa" style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#FEF08A;border-radius:50%;"></span> Janela fértil</span>
-            <span class="leg-estimativa" style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#EAB308;border-radius:50%;"></span> Ovulação estimada</span>
+        <div class="cal-legenda">
+            <span><i class="leg-dot" style="background:#E11D48;"></i> Período</span>
+            <span class="leg-relacao"><span style="color:#BE185D;">♥</span> Relações</span>
+            <span class="leg-estimativa"><i class="leg-dot" style="border:2px dashed #FB7185;"></i> Previsão</span>
+            <span class="leg-estimativa"><i class="leg-dot" style="background:#FEF3C7;box-shadow:inset 0 0 0 1px #F59E0B;"></i> Janela fértil</span>
+            <span class="leg-estimativa"><i class="leg-dot" style="background:#F59E0B;"></i> Ovulação estimada</span>
         </div>
     </div>
 
     <!-- REGISTO RÁPIDO -->
     <div class="card">
         <div class="card-titulo">Registar período</div>
-        <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:12px;">Clica no calendário para selecionar o dia, ou usa os botões abaixo.</p>
+        <p style="font-size:14px; color:var(--tx2); margin-bottom:12px;">Clica no calendário para selecionar o dia, ou usa os botões abaixo.</p>
         <div class="form-grupo">
-            <label>Data selecionada</label>
+            <label for="data-selecionada">Data selecionada</label>
             <input type="date" id="data-selecionada">
         </div>
         <div class="registo-rapido" style="margin-top:4px;">
-            <button id="btn-inicio" onclick="registarInicio()">🔴 Marcar início</button>
-            <button id="btn-fim" onclick="registarFim()">✅ Marcar fim</button>
+            <button id="btn-inicio" onclick="registarInicio()">Marcar início</button>
+            <button id="btn-fim" onclick="registarFim()">Marcar fim</button>
         </div>
-        <div id="registo-estado" style="margin-top:10px; font-size:0.82rem; color:var(--cinza-meio);"></div>
+        <div id="registo-estado" style="margin-top:10px; font-size:13px; color:var(--tx2);"></div>
     </div>
 
     <!-- REGISTOS OPCIONAIS -->
     <div class="card">
         <button class="linha-privada" id="opcionais-toggle" onclick="alternarPrivado('opcionais')" hidden>
-            <span>🔒 Registos privados</span><span id="opcionais-seta">▾</span>
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg> Registos privados</span><span id="opcionais-seta">▾</span>
         </button>
         <div id="opcionais-corpo">
             <div class="card-titulo">Registos opcionais</div>
-            <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:12px;">
+            <p style="font-size:14px; color:var(--tx2); margin-bottom:12px;">
                 Aplicam-se ao dia selecionado no calendário: <strong id="opcionais-dia"></strong>
             </p>
             <div class="opcionais-botoes">
@@ -329,10 +302,10 @@
     <!-- HISTÓRICO -->
     <div class="card">
         <div class="card-titulo">Histórico de ciclos</div>
-        <div id="historico-ciclos" style="color:var(--cinza-meio); font-size:0.9rem;">A carregar...</div>
+        <div id="historico-ciclos" style="color:var(--tx2); font-size:14px;">A carregar...</div>
         <div id="historico-eventos-wrap" style="display:none; margin-top:16px;">
             <button class="linha-privada" id="historico-toggle" onclick="alternarPrivado('historico')" hidden>
-                <span>🔒 Registos privados</span><span id="historico-seta">▾</span>
+                <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V8a4 4 0 018 0v3"/></svg> Registos privados</span><span id="historico-seta">▾</span>
             </button>
             <div id="historico-eventos-corpo">
                 <div class="card-titulo">Registos opcionais</div>
@@ -347,7 +320,7 @@
 <div class="modal-overlay" id="modal-confirmar">
     <div class="modal">
         <div class="modal-titulo" id="confirmar-titulo"></div>
-        <p id="confirmar-texto" style="font-size:0.9rem; color:var(--cinza-meio); margin-bottom:18px;"></p>
+        <p id="confirmar-texto" style="font-size:15px; color:var(--tx2); margin-bottom:18px;"></p>
         <div style="display:flex; gap:10px;">
             <button class="btn btn-secundario" style="flex:1;" onclick="responderConfirmacao(false)">Cancelar</button>
             <button class="btn btn-primario" style="flex:2;" id="confirmar-ok" onclick="responderConfirmacao(true)">Confirmar</button>
@@ -535,15 +508,15 @@ function renderPrevisao() {
         : `ciclo médio de ${f.cicloMedio} dias (valor por defeito)`;
 
     el.innerHTML = `
-        <div class="previsao-card">
-            <div class="previsao-titulo">🔮 Próxima menstruação prevista</div>
-            <div class="previsao-data">🔴 ${formatarDataLonga(f.proximoPeriodo)}</div>
+        <div class="card">
+            <div class="previsao-titulo">Próxima menstruação prevista</div>
+            <div class="previsao-data">${formatarDataLonga(f.proximoPeriodo)}</div>
             <div class="previsao-dias">${CicloCalc.textoMenstruacao(f)} · ${ciclosTxt}</div>
-            <div style="margin-top:10px; font-size:0.85rem; color:var(--azul-escuro);">
-                ✨ <strong>Janela fértil:</strong> ${formatarDataLonga(j.inicio)} – ${formatarDataLonga(j.fim)}
-                <div style="font-size:0.78rem; color:var(--cinza-meio); margin-top:2px;">Ovulação estimada: ${formatarDataLonga(f.ovulacao)}</div>
+            <div class="previsao-janela">
+                <strong>Janela fértil:</strong> ${formatarDataLonga(j.inicio)} – ${formatarDataLonga(j.fim)}
+                <small>Ovulação estimada: ${formatarDataLonga(f.ovulacao)}</small>
             </div>
-            ${f.aviso ? `<div class="aviso-fiabilidade">⚠️ ${f.aviso}</div>` : ''}
+            ${f.aviso ? `<div class="aviso-fiabilidade">${f.aviso}</div>` : ''}
         </div>`;
 }
 
@@ -560,14 +533,14 @@ function renderFaseAtual() {
             const dia = gr.g ? gr.g.totalDias + 1 : null;
             el.innerHTML = `
                 <div class="card-titulo">Ciclo</div>
-                <div style="font-weight:700; font-size:1.1rem; color:var(--azul-escuro);">${dia ? 'Ciclo - dia ' + dia : 'Ciclo'}</div>
+                <div class="fase-nome">${dia ? 'Ciclo - dia ' + dia : 'Ciclo'}</div>
                 <button class="btn btn-secundario" style="margin-top:14px;" onclick="mostrarGravidez(true)">Mostrar</button>`;
             return;
         }
         el.innerHTML = `
             <div class="card-titulo">Gravidez</div>
-            <div style="font-weight:700; font-size:1.2rem; color:var(--azul-escuro);">${CicloCalc.textoGravidez(gr.g)}</div>
-            <div style="font-size:0.82rem; color:var(--cinza-meio); margin-top:6px;">${CicloCalc.TEXTO_GRAVIDEZ}</div>
+            <div class="fase-nome">${CicloCalc.textoGravidez(gr.g)}</div>
+            <div class="fase-meta" style="margin-top:6px;">${CicloCalc.TEXTO_GRAVIDEZ}</div>
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;">
                 <button class="btn btn-secundario" style="width:auto;" onclick="pedirTerminarGravidez()">Terminar modo gravidez</button>
                 ${discreto ? '<button class="btn btn-secundario" style="width:auto;" onclick="mostrarGravidez(false)">Ocultar</button>' : ''}
@@ -578,9 +551,8 @@ function renderFaseAtual() {
     if (!f) {
         el.innerHTML = `
             <div style="text-align:center; padding:8px;">
-                <div style="font-size:1.5rem; margin-bottom:6px;">🌙</div>
-                <div style="font-weight:600; color:var(--azul-escuro);">Sem registos ainda</div>
-                <div style="font-size:0.8rem; color:var(--cinza-meio); margin-top:4px;">Marca o início do teu período abaixo.</div>
+                <div class="fase-nome" style="font-size:18px;">Sem registos ainda</div>
+                <div class="fase-meta" style="margin-top:4px;">Marca o início do teu período abaixo.</div>
             </div>`;
         return;
     }
@@ -590,15 +562,15 @@ function renderFaseAtual() {
 
     el.innerHTML = `
         <div class="card-titulo">Fase atual</div>
-        <div style="display:flex; align-items:center; gap:14px;">
-            <span style="font-size:2.8rem; line-height:1;">${info.emoji}</span>
-            <div style="flex:1;">
-                <div style="font-weight:700; font-size:1.1rem; color:var(--azul-escuro);">${f.nome}</div>
-                <div style="font-size:0.8rem; color:var(--cinza-meio); margin-top:2px;">Dia ${f.dia} do ciclo</div>
-                <div style="font-size:0.8rem; color:var(--cinza-meio); margin-top:4px;">${info.desc}</div>
+        <div class="fase-topo">
+            <span class="fase-bola" style="background:${info.cor};"></span>
+            <div style="flex:1; min-width:0;">
+                <div class="fase-nome">${f.nome}</div>
+                <div class="fase-meta">Dia ${f.dia} do ciclo</div>
+                <div class="fase-meta">${info.desc}</div>
             </div>
         </div>
-        <div style="margin-top:12px; background:#FEF9C3; border-radius:var(--radius-sm); padding:8px 12px; font-size:0.8rem; color:#854D0E; font-weight:600;">
+        <div class="fase-estado">
             ${estadoJanela ? estadoJanela + ' · ' : ''}${CicloCalc.textoMenstruacao(f)}
         </div>
         ${renderDicasFase(f.nome, f.dia)}`;
@@ -621,17 +593,17 @@ function renderDicasFase(nomeF, diasCiclo) {
     };
     var d = DICAS[nomeF];
     if (!d) return '';
-    function li(t) { return '<li style="font-size:0.82rem;margin-bottom:2px;">' + t + '</li>'; }
-    function sec(em, lbl, arr) {
-        return '<div><div style="font-size:0.75rem;font-weight:700;color:' + d.ct + ';margin-bottom:4px;">' + em + ' ' + lbl + '</div>'
-            + '<ul style="margin:0;padding-left:16px;">' + arr.map(li).join('') + '</ul></div>';
+    function li(t) { return '<li style="font-size:14px;margin-bottom:2px;">' + t + '</li>'; }
+    function sec(lbl, arr) {
+        return '<div><div style="font-size:12px;font-weight:700;color:' + d.ct + ';margin-bottom:4px;">' + lbl + '</div>'
+            + '<ul style="margin:0;padding-left:18px;">' + arr.map(li).join('') + '</ul></div>';
     }
-    return '<div style="margin-top:14px;background:' + d.cor + ';border-radius:var(--radius-sm);padding:14px;">'
-        + '<div style="font-weight:700;font-size:0.78rem;text-transform:uppercase;color:' + d.ct + ';margin-bottom:10px;">O que esperar \u00b7 Dia ' + diasCiclo + '</div>'
-        + '<div style="display:grid;gap:10px;">'
-        + sec('\ud83e\udd57', 'Nutri\u00e7\u00e3o', d.nut)
-        + '<div><div style="font-size:0.75rem;font-weight:700;color:' + d.ct + ';margin-bottom:4px;">\ud83d\udcad O que podes sentir</div>'
-        + '<p style="margin:0;font-size:0.82rem;line-height:1.5;">' + d.sens + '</p></div>'
+    return '<div style="margin-top:14px;background:' + d.cor + ';border-radius:20px;padding:16px;">'
+        + '<div style="font-weight:700;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:' + d.ct + ';margin-bottom:10px;">O que esperar \u00b7 Dia ' + diasCiclo + '</div>'
+        + '<div style="display:grid;gap:12px;">'
+        + sec('Nutri\u00e7\u00e3o', d.nut)
+        + '<div><div style="font-size:12px;font-weight:700;color:' + d.ct + ';margin-bottom:4px;">O que podes sentir</div>'
+        + '<p style="margin:0;font-size:14px;line-height:1.5;">' + d.sens + '</p></div>'
         + '</div></div>';
 }
 
@@ -648,9 +620,7 @@ function renderTimeline() {
     barra.innerHTML = est.segmentos.map(s => {
         const info = CicloCalc.FASES_INFO[s.nome];
         const largura = ((s.ate - s.de + 1) / est.total) * 100;
-        return `<div class="timeline-seg" style="width:${largura}%; background:${info.cor};" title="${s.nome}">
-            ${largura > 15 ? info.emoji : ''}
-        </div>`;
+        return `<div class="timeline-seg" style="width:${largura}%; background:${info.cor};" title="${s.nome}"></div>`;
     }).join('');
 
     // Marcador
@@ -671,7 +641,7 @@ function renderTimeline() {
         return `
         <div class="fase-leg-item">
             <div class="fase-leg-dot" style="background:${info.cor};"></div>
-            ${info.emoji} ${s.nome} (dias ${s.de}–${s.ate})
+            ${s.nome} (dias ${s.de}–${s.ate})
         </div>`;
     }).join('');
 }
@@ -712,7 +682,6 @@ function renderCalendario() {
     const diasRelacoes = discreto
         ? new Set()
         : new Set(eventos.filter(e => e.tipo === 'relacao').map(e => e.data));
-    document.querySelectorAll('.leg-relacao').forEach(el => { el.style.display = discreto ? 'none' : 'inline'; });
 
     for (let d = 1; d <= ultimoDia; d++) {
         const dataStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -732,13 +701,14 @@ function renderCalendario() {
         if (info.relacao) classes += ' relacao';
         if (isHoje) classes += ' hoje';
 
-        const estilo = isSelecionado ? 'outline: 3px solid var(--azul-escuro); outline-offset: 1px;' : '';
+        if (isSelecionado) classes += ' sel';
 
-        html += `<div class="${classes}" style="${estilo}" onclick="selecionarDia('${dataStr}')">${d}</div>`;
+        html += `<div class="${classes}" onclick="selecionarDia('${dataStr}')">${d}</div>`;
     }
 
     grid.innerHTML = html;
     document.querySelectorAll(".leg-estimativa").forEach(el => { el.style.display = emGravidez ? "none" : "inline-flex"; });
+    document.querySelectorAll('.leg-relacao').forEach(el => { el.style.display = discreto ? 'none' : 'inline-flex'; });
     atualizarOpcionais();
 }
 
@@ -783,7 +753,7 @@ async function registarInicio() {
     if (!data) { mostrarToast('Seleciona uma data'); return; }
 
     const { error } = await db.from('ciclo_menstrual').insert({ inicio: data, fim: null });
-    if (error) { mostrarToast('Erro ao guardar 😕'); return; }
+    if (error) { mostrarToast('Erro ao guardar'); return; }
 
     mostrarToast('Início do período registado ✓');
     await carregarCiclos();
@@ -802,7 +772,7 @@ async function registarFim() {
         .update({ fim: data })
         .eq('id', cicloAberto.id);
 
-    if (error) { mostrarToast('Erro ao guardar 😕'); return; }
+    if (error) { mostrarToast('Erro ao guardar'); return; }
 
     mostrarToast('Fim do período registado ✓');
     await carregarCiclos();
@@ -825,7 +795,7 @@ function renderHistorico() {
             const dias = Math.round((new Date(c.fim + 'T00:00:00') - inicio) / (1000*60*60*24)) + 1;
             duracaoFluxo = `${dias} dias de fluxo`;
         } else if (i === 0) {
-            duracaoFluxo = '🔴 Em curso';
+            duracaoFluxo = 'Em curso';
         }
 
         let duracaoCiclo = '';
@@ -836,12 +806,12 @@ function renderHistorico() {
         }
 
         return `
-            <div style="padding:12px 0; border-bottom:1px solid var(--cinza-claro);">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="font-weight:600; font-size:0.9rem;">🔴 ${dataStr}</div>
-                    ${duracaoCiclo ? `<span style="font-size:0.72rem; background:var(--verde-claro); color:var(--verde); padding:2px 8px; border-radius:99px; font-weight:600;">${duracaoCiclo}</span>` : ''}
+            <div class="hist-linha">
+                <div class="hist-topo">
+                    <div class="hist-data"><i></i>${dataStr}</div>
+                    ${duracaoCiclo ? `<span class="badge badge-verde">${duracaoCiclo}</span>` : ''}
                 </div>
-                <div style="font-size:0.78rem; color:var(--cinza-meio); margin-top:3px;">
+                <div class="hist-det">
                     ${duracaoFluxo}
                     ${c.notas ? ' · ' + c.notas : ''}
                 </div>
@@ -913,7 +883,7 @@ function mostrarGravidez(visivel) {
 // ---- ações ----
 async function guardarEvento(tipo, data) {
     const { error } = await db.from('ciclo_eventos').insert({ data, tipo });
-    if (error) { console.error(error); mostrarToast('Erro ao guardar 😕'); return false; }
+    if (error) { console.error(error); mostrarToast('Erro ao guardar'); return false; }
     return true;
 }
 
@@ -924,7 +894,7 @@ async function alternarRelacoes() {
     const existentes = eventosDoDia(dia, 'relacao');
     if (existentes.length) {
         const { error } = await db.from('ciclo_eventos').delete().in('id', existentes.map(e => e.id));
-        if (error) { console.error(error); mostrarToast('Erro ao guardar 😕'); return; }
+        if (error) { console.error(error); mostrarToast('Erro ao guardar'); return; }
         mostrarToast('Registo removido');
     } else {
         if (!(await guardarEvento('relacao', dia))) return;
@@ -983,7 +953,7 @@ async function pedirTerminarGravidez() {
 
     const nota = CicloCalc.MARCA_TERMINADA + (gr.evento.nota ? ' ' + gr.evento.nota : '');
     const { error } = await db.from('ciclo_eventos').update({ nota }).eq('id', gr.evento.id);
-    if (error) { console.error(error); mostrarToast('Erro ao guardar 😕'); return; }
+    if (error) { console.error(error); mostrarToast('Erro ao guardar'); return; }
 
     await carregarEventos();
     renderTudo();
@@ -1001,7 +971,7 @@ async function pedirApagarEvento(id) {
     if (!ok) return;
 
     const { error } = await db.from('ciclo_eventos').delete().eq('id', id);
-    if (error) { console.error(error); mostrarToast('Erro ao apagar 😕'); return; }
+    if (error) { console.error(error); mostrarToast('Erro ao apagar'); return; }
 
     await carregarEventos();
     renderTudo();
@@ -1030,8 +1000,8 @@ function renderEventos() {
         return `
             <div class="evento-linha">
                 <div style="min-width:0;">
-                    <div style="font-weight:600; font-size:0.88rem; color:var(--cinza-texto);">${ROTULOS_EVENTO[e.tipo] || e.tipo}</div>
-                    <div style="font-size:0.78rem; color:var(--cinza-meio);">${dataStr}${extra ? ' · ' + extra : ''}</div>
+                    <div style="font-weight:600; font-size:15px; color:var(--tx);">${ROTULOS_EVENTO[e.tipo] || e.tipo}</div>
+                    <div style="font-size:13px; color:var(--tx2);">${dataStr}${extra ? ' · ' + extra : ''}</div>
                 </div>
                 <button onclick="pedirApagarEvento('${e.id}')" aria-label="Apagar registo">Apagar</button>
             </div>`;

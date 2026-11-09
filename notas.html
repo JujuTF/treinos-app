@@ -6,62 +6,65 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>Notas</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232A9D8F'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F766E'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
     <style>
         .pesquisa {
             width: 100%;
-            padding: 10px 14px;
+            min-height: 44px;
+            padding: 0 18px;
             margin-bottom: 14px;
-            border: 1.5px solid var(--cinza-borda);
-            border-radius: var(--radius-sm);
-            font-family: 'DM Sans', sans-serif;
-            font-size: 0.9rem;
-            background: var(--branco);
-            color: var(--cinza-texto);
+            border: 1px solid var(--linha);
+            border-radius: 999px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.8);
+            color: var(--tx);
         }
-        .pesquisa:focus { outline: none; border-color: var(--verde); }
+        .pesquisa:focus-visible { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.25); }
         .nota-linha .nota-texto { cursor: text; }
-        .nota-linha.feita .nota-texto { text-decoration: line-through; color: var(--cinza-meio); }
-        .nota-linha.feita .nota-caixa { background: var(--verde); border-color: var(--verde); }
+        .nota-linha.feita .nota-texto { text-decoration: line-through; color: var(--tx2); }
+        .nota-linha.feita .nota-caixa { background: var(--grad); border-color: transparent; }
         .nota-linha.feita .nota-caixa::after { content: '✓'; }
         .nota-editar {
             flex: 1; min-width: 0;
-            padding: 6px 8px;
-            border: 1.5px solid var(--verde);
-            border-radius: var(--radius-sm);
-            font-family: 'DM Sans', sans-serif;
-            font-size: 0.92rem;
-            color: var(--cinza-texto);
+            min-height: 44px;
+            padding: 6px 14px;
+            border: 1px solid var(--teal);
+            border-radius: 16px;
+            font-size: 16px;
+            color: var(--tx);
+            background: rgba(255, 255, 255, 0.9);
         }
         .nota-acao {
             flex-shrink: 0;
+            display: inline-flex; align-items: center; justify-content: center;
+            min-width: 44px; min-height: 44px;
+            margin: -8px -6px -8px 0;
             background: none; border: none; cursor: pointer;
-            padding: 2px 6px;
-            font-size: 1rem; line-height: 1.4;
-            color: var(--cinza-borda);
+            font-size: 16px; line-height: 1;
+            color: var(--tx2);
         }
-        .nota-acao.ativo, .nota-acao:hover { color: var(--cinza-meio); }
-        .nota-acao.pin.ativo { color: inherit; }
-        .nota-acao.pin { filter: grayscale(1); opacity: 0.45; }
-        .nota-acao.pin.ativo { filter: none; opacity: 1; }
+        .nota-acao svg { width: 18px; height: 18px; }
+        .nota-acao.pin { opacity: 0.55; }
+        .nota-acao.pin.ativo { color: var(--teal-d); opacity: 1; }
         .seccao-titulo {
-            font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
-            letter-spacing: 0.06em; color: var(--cinza-meio); margin-bottom: 6px;
+            font-size: 11px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--tx2); margin-bottom: 6px;
         }
         .linha-feitas {
             display: flex; align-items: center; justify-content: space-between; width: 100%;
+            min-height: 44px;
             background: none; border: none; cursor: pointer; padding: 2px 0;
-            font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600;
-            color: var(--cinza-meio);
+            font-size: 15px; font-weight: 600;
+            color: var(--tx2);
         }
     </style>
 </head>
 <body>
 
 <header class="header">
-    <div style="display:flex; align-items:center; gap:10px;">
-        <a href="index.html" style="color:var(--cinza-meio); display:flex;" aria-label="Voltar">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <div style="display:flex; align-items:center; gap:4px; margin-left:-10px;">
+        <a class="icon-btn" href="index.html" aria-label="Voltar">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                 <path d="M15 19l-7-7 7-7"/>
             </svg>
         </a>
@@ -80,13 +83,12 @@
 
     <div id="vazio" class="card" hidden>
         <div class="vazio">
-            <div class="vazio-icon">📝</div>
             <p id="vazio-texto"></p>
         </div>
     </div>
 
     <div class="card" id="card-fixadas" hidden>
-        <div class="seccao-titulo">📌 Fixadas</div>
+        <div class="seccao-titulo">Fixadas</div>
         <div id="lista-fixadas"></div>
     </div>
 
@@ -108,7 +110,7 @@
 <div class="modal-overlay" id="modal-confirmar">
     <div class="modal">
         <div class="modal-titulo">Apagar nota</div>
-        <p id="confirmar-texto" style="font-size:0.9rem; color:var(--cinza-meio); margin-bottom:18px; overflow-wrap:anywhere;"></p>
+        <p id="confirmar-texto" style="font-size:15px; color:var(--tx2); margin-bottom:18px; overflow-wrap:anywhere;"></p>
         <div style="display:flex; gap:10px;">
             <button class="btn btn-secundario" style="flex:1;" onclick="responderConfirmacao(false)">Cancelar</button>
             <button class="btn btn-primario" style="flex:2;" onclick="responderConfirmacao(true)">Apagar</button>
@@ -222,14 +224,14 @@ async function adicionarNota() {
     if (!texto) return;
 
     const { error } = await db.from('notas').insert({ texto: texto });
-    if (error) { console.error(error); mostrarToast('Não foi possível guardar 😕'); return; }
+    if (error) { console.error(error); mostrarToast('Não foi possível guardar'); return; }
     input.value = '';
     await carregarNotas();
 }
 
 async function atualizarNota(n, campos) {
     const { error } = await db.from('notas').update(campos).eq('id', n.id);
-    if (error) { console.error(error); mostrarToast('Não foi possível guardar 😕'); await carregarNotas(); return false; }
+    if (error) { console.error(error); mostrarToast('Não foi possível guardar'); await carregarNotas(); return false; }
     Object.assign(n, campos);
     render();
     return true;
@@ -248,7 +250,7 @@ async function apagarNota(n) {
     const ok = await pedirConfirmacao('Queres apagar esta nota? "' + n.texto + '"');
     if (!ok) return;
     const { error } = await db.from('notas').delete().eq('id', n.id);
-    if (error) { console.error(error); mostrarToast('Não foi possível apagar 😕'); return; }
+    if (error) { console.error(error); mostrarToast('Não foi possível apagar'); return; }
     notas = notas.filter(x => x.id !== n.id);
     render();
 }
@@ -296,7 +298,7 @@ function criarLinha(n) {
 
     const pin = document.createElement('button');
     pin.className = 'nota-acao pin' + (n.fixada ? ' ativo' : '');
-    pin.textContent = '📌';
+    pin.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 3l5 5-2 1-3 3v4l-2 2-3.5-3.5L5 20l-1-1 5.5-5.5L6 10l2-2h4l3-3 1-2z"/></svg>';
     pin.setAttribute('aria-label', n.fixada ? 'Desafixar' : 'Fixar');
     pin.setAttribute('aria-pressed', n.fixada ? 'true' : 'false');
     pin.addEventListener('click', () => alternarFixada(n));
