@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         centro: '<span class="anel-num pequeno" id="agua-pct">0%</span>',
         rotulo: 'Progresso da hidratação'
     });
+    montarConquistas();
     await verificarAuth();
     setarDataHeader();
     configurarTreino();
@@ -34,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await carregarSessoes();
     mostrarDeployInfo();
     await carregarDiaHoje();
+    await carregarConquistas();
     await carregarCicloResumido();
     await carregarNotas();
 });
@@ -119,6 +121,7 @@ async function carregarSessoes() {
     sessoesRecentes = error ? [] : (data || []);
     renderTreinoHoje();
     renderResumoSemana();
+    atualizarConquistas();
 }
 
 function sessoesDeHoje() {
@@ -324,6 +327,7 @@ function atualizarAgua() {
     document.getElementById('agua-meta-label').textContent = meta;
     document.getElementById('agua-pct').textContent = Math.round(pct) + '%';
     UI.definirAnel(document.getElementById('agua-anel'), pct);
+    atualizarConquistas();
 }
 
 async function addAgua(ml) {
@@ -346,6 +350,138 @@ async function resetAgua() {
         agua_ml: 0,
         meta_agua_ml: estadoDia.meta_agua_ml
     }, { onConflict: 'data' });
+}
+
+// ============================================
+// CONQUISTAS DE HOJE — treino, água e suplementos (combo do dia)
+// A lógica está em js/conquistas.js; aqui só desenho e ligação à base de dados.
+// ============================================
+
+let conqDados = { agua: [], suplementos: [] };   // histórico (hoje é sobreposto com o estado local)
+let conqMontado = false;
+let conqComboAnterior = null;                    // null até à primeira renderização (sem animação ao abrir)
+let conqSalvando = false;
+
+const CONQ_ICO = {
+    treino: '<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>',
+    agua: '<path d="M12 2.7s6 6.3 6 10.8a6 6 0 01-12 0c0-4.5 6-10.8 6-10.8z"/>',
+    suplementos: '<rect x="3" y="8.5" width="18" height="7" rx="3.5" transform="rotate(-45 12 12)"/><path d="M9.5 9.5l5 5"/>',
+    neutro: '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+    ok: '<path d="M5 12.5l4.5 4.5L19 7.5"/>'
+};
+
+function conqSvg(chave, classe) {
+    return '<svg class="' + classe + '" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true">' + CONQ_ICO[chave] + '</svg>';
+}
+
+function montarConquistas() {
+    const itens = document.getElementById('conq-itens');
+    if (!itens || conqMontado) return;
+    const discreto = Discreto.ativo();
+    itens.innerHTML =
+        '<div class="conq-item">' +
+            '<div class="conq-circ" id="conq-treino" role="img">' + conqSvg('treino', 'conq-base') + conqSvg('ok', 'conq-ok') + '</div>' +
+            '<span class="conq-rot">Treino</span>' +
+        '</div>' +
+        '<div class="conq-item">' +
+            '<div class="conq-agua" id="conq-agua">' + UI.anel({
+                pct: 0, tamanho: 56, traco: 9, id: 'conq-agua-anel',
+                centro: conqSvg('agua', 'conq-base') + conqSvg('ok', 'conq-ok')
+            }) + '</div>' +
+            '<span class="conq-rot">Água</span>' +
+        '</div>' +
+        '<button type="button" class="conq-item conq-btn" id="conq-sup" aria-pressed="false" onclick="alternarSuplementos()">' +
+            '<span class="conq-circ" id="conq-sup-circ">' +
+                conqSvg(discreto ? 'neutro' : 'suplementos', 'conq-base') + conqSvg('ok', 'conq-ok') +
+            '</span>' +
+            '<span class="conq-rot">' + (discreto ? 'Hábitos' : 'Suplementos') + '</span>' +
+        '</button>';
+    conqMontado = true;
+}
+
+async function carregarConquistas() {
+    const desde = TreinoCalc.somarDias(hoje(), -400);
+    const dados = await Conquistas.carregar(db, desde, { semTreinos: true });
+    conqDados = { agua: dados.agua, suplementos: dados.suplementos };
+    atualizarConquistas();
+}
+
+function suplementosHoje() {
+    const h = hoje();
+    return conqDados.suplementos.some(l => l.data === h && l.suplementos === true);
+}
+
+function definirSuplementosLocal(valor) {
+    const h = hoje();
+    conqDados.suplementos = conqDados.suplementos.filter(l => l.data !== h)
+        .concat({ data: h, suplementos: valor });
+}
+
+function atualizarConquistas() {
+    if (!conqMontado) montarConquistas();
+    const combo = document.getElementById('conq-combo');
+    if (!combo) return;
+
+    const h = hoje();
+    const agua = conqDados.agua.filter(l => l.data !== h)
+        .concat({ data: h, agua_ml: estadoDia.agua_ml, meta_agua_ml: estadoDia.meta_agua_ml });
+    const idx = Conquistas.indexar({ treinos: sessoesRecentes, agua: agua, suplementos: conqDados.suplementos });
+    const e = Conquistas.estadoDoDia(idx, h);
+    const sequencia = Conquistas.sequenciaCombos(Conquistas.datasCombo(idx), h);
+    const discreto = Discreto.ativo();
+    const sim = v => v ? 'feito' : 'por fazer';
+
+    const treino = document.getElementById('conq-treino');
+    treino.classList.toggle('feito', e.treino);
+    treino.setAttribute('aria-label', 'Treino: ' + sim(e.treino));
+
+    const aguaEl = document.getElementById('conq-agua');
+    aguaEl.classList.toggle('feito', e.agua);
+    aguaEl.firstElementChild.setAttribute('role', 'img');
+    aguaEl.firstElementChild.setAttribute('aria-label',
+        'Água: ' + estadoDia.agua_ml + ' de ' + estadoDia.meta_agua_ml + ' ml, ' + sim(e.agua));
+    UI.definirAnel(document.getElementById('conq-agua-anel'), e.aguaPct);
+
+    const sup = document.getElementById('conq-sup');
+    sup.setAttribute('aria-pressed', e.suplementos ? 'true' : 'false');
+    sup.setAttribute('aria-label', (discreto ? 'Hábitos' : 'Suplementos e medicação') + ': ' + sim(e.suplementos));
+    document.getElementById('conq-sup-circ').classList.toggle('feito', e.suplementos);
+
+    combo.innerHTML =
+        '<div>' +
+            '<div class="conq-combo-txt">' + (e.combo ? 'Combo do dia!' : e.feitas + ' de 3') + '</div>' +
+            '<div class="conq-combo-rot">' + (e.combo ? '3 de 3' : 'Combo do dia') + '</div>' +
+        '</div>' +
+        '<div class="conq-seq">Sequência de combos: ' + sequencia + (sequencia === 1 ? ' dia' : ' dias') + '</div>';
+
+    document.getElementById('card-conquistas').classList.toggle('completo', e.combo);
+    if (e.combo && conqComboAnterior === false) {
+        combo.classList.remove('celebra');
+        void combo.offsetWidth; // reinicia a animação
+        combo.classList.add('celebra');
+    }
+    conqComboAnterior = e.combo;
+}
+
+async function alternarSuplementos() {
+    if (conqSalvando) return;
+    conqSalvando = true;
+    const antes = suplementosHoje();
+    definirSuplementosLocal(!antes);
+    atualizarConquistas();
+
+    const { error } = await db.from('habitos_dia').upsert({
+        data: hoje(),
+        suplementos: !antes,
+        atualizado_em: new Date().toISOString()
+    }, { onConflict: 'data' });
+    conqSalvando = false;
+    if (error) {
+        console.error(error);
+        definirSuplementosLocal(antes);
+        atualizarConquistas();
+        mostrarToast('Não foi possível guardar');
+    }
 }
 
 // ============================================

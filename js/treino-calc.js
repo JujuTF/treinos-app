@@ -107,6 +107,7 @@
         diasDesdeUltimo: diasDesdeUltimo,
         semanasRecentes: semanasRecentes,
         diasNoMes: diasNoMes,
-        somarDias: somarDias
+        somarDias: somarDias,
+        diferencaDias: diferencaDias
     };
 });

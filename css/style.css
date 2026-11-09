@@ -633,6 +633,55 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
     text-decoration: none;
 }
 
+/* ---- CONQUISTAS DE HOJE ---- */
+.conq { position: relative; }
+.conq-itens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.conq-item {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    min-height: 44px; padding: 0; background: none; border: 0; font: inherit; color: inherit;
+}
+.conq-btn { cursor: pointer; border-radius: 20px; }
+.conq-btn:active .conq-circ { transform: scale(0.94); }
+.conq-rot { font-size: 12px; font-weight: 500; color: var(--tx2); text-align: center; }
+.conq-circ {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--pista); color: var(--tx2);
+    transition: background 0.25s, color 0.25s, transform 0.12s;
+}
+.conq-circ svg, .conq-agua .anel-centro svg { width: 24px; height: 24px; }
+.conq-circ.feito { background: linear-gradient(135deg, #0D9488, #6366F1); color: #fff; }
+.conq-ok { display: none; }
+.feito > .conq-ok, .feito .conq-ok { display: block; }
+.feito > .conq-base, .feito .conq-base { display: none; }
+.conq-agua.feito .anel-centro { color: var(--teal-d); }
+.conq-agua .anel-centro { color: var(--tx2); }
+
+.conq-combo {
+    margin-top: 16px; padding: 12px 14px; border-radius: 20px;
+    background: var(--cinza-claro);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.conq-combo-txt { font-family: var(--fonte-t); font-size: 20px; font-weight: 700; color: var(--tx); line-height: 1.1; }
+.conq-combo-rot { font-size: 12px; color: var(--tx2); margin-top: 3px; }
+.conq-seq { font-size: 13px; color: var(--tx2); text-align: right; }
+
+.conq.completo { box-shadow: 0 10px 30px rgba(30, 41, 90, 0.08), 0 0 28px rgba(99, 102, 241, 0.22); }
+.conq.completo::before {
+    content: ''; position: absolute; inset: -1px; border-radius: inherit; padding: 2px;
+    background: linear-gradient(135deg, #0D9488, #6366F1);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    pointer-events: none;
+}
+.conq.completo .conq-combo { background: linear-gradient(135deg, rgba(13, 148, 136, 0.14), rgba(99, 102, 241, 0.16)); }
+.conq-combo.celebra { animation: conqCombo 0.4s ease-out; }
+@keyframes conqCombo {
+    0%   { transform: scale(1);    box-shadow: 0 0 0 rgba(99, 102, 241, 0); }
+    50%  { transform: scale(1.04); box-shadow: 0 0 26px rgba(99, 102, 241, 0.45); }
+    100% { transform: scale(1);    box-shadow: 0 0 0 rgba(99, 102, 241, 0); }
+}
+
 /* ---- MOVIMENTO ---- */
 @keyframes sobe { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @keyframes enche { from { transform: scaleY(0.2); opacity: 0.4; } to { transform: scaleY(1); opacity: 1; } }
