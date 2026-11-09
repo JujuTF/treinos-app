@@ -121,14 +121,45 @@
             transform: translateX(-50%);
         }
         .timeline-labels {
-            display: flex;
-            justify-content: space-between;
+            position: relative;
+            height: 1.1em;
             font-size: 0.62rem;
             color: var(--cinza-meio);
             margin-top: 4px;
-            gap: 8px;
         }
-        .timeline-labels span { white-space: nowrap; flex: 0 0 auto; }
+        .timeline-labels span { position: absolute; top: 0; white-space: nowrap; }
+        .timeline-labels .lbl-ini { left: 0; }
+        .timeline-labels .lbl-fim { right: 0; }
+        .timeline-labels .lbl-ov { transform: translateX(-50%); }
+        .cal-dia.relacao::after {
+            content: '♥';
+            position: absolute;
+            right: 3px; bottom: 0;
+            font-size: 0.5rem;
+            line-height: 1;
+            color: #DB2777;
+        }
+        .opcionais-botoes { display: grid; gap: 8px; margin-top: 4px; }
+        .opcionais-botoes button {
+            padding: 12px 8px;
+            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--cinza-borda);
+            background: var(--branco);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--cinza-texto);
+        }
+        .opcionais-botoes button.ativo-relacao { background: #FCE7F3; border-color: #DB2777; color: #9D174D; }
+        .evento-linha {
+            display: flex; align-items: center; justify-content: space-between; gap: 8px;
+            padding: 10px 0; border-bottom: 1px solid var(--cinza-claro);
+        }
+        .evento-linha button {
+            background: none; border: none; cursor: pointer; color: var(--cinza-meio);
+            font-size: 0.78rem; padding: 4px 8px; font-family: inherit;
+        }
         .fase-legenda {
             display: flex;
             flex-wrap: wrap;
@@ -222,7 +253,7 @@
 
     <!-- PREVISÃO PRÓXIMO PERÍODO -->
     <div id="previsao-wrap"></div>
-    <p class="aviso-estimativa">Estimativa com base nos teus registos. Não é um diagnóstico.</p>
+    <p class="aviso-estimativa" id="aviso-estimativa">Estimativa com base nos teus registos. Não é um diagnóstico.</p>
 
     <!-- FASE ATUAL -->
     <div id="fase-atual-wrap" class="card" style="margin-bottom:12px;"></div>
@@ -248,9 +279,10 @@
         <div class="cal-wrap"><div class="cal-grid" id="cal-grid"></div></div>
         <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; font-size:0.72rem; color:var(--cinza-meio);">
             <span>🔴 Período</span>
-            <span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;border:2px dashed #FCA5A5;border-radius:50%;"></span> Previsão</span>
-            <span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#FEF08A;border-radius:50%;"></span> Janela fértil</span>
-            <span style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#EAB308;border-radius:50%;"></span> Ovulação estimada</span>
+            <span><span style="color:#DB2777;">♥</span> Relações</span>
+            <span class="leg-estimativa" style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;border:2px dashed #FCA5A5;border-radius:50%;"></span> Previsão</span>
+            <span class="leg-estimativa" style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#FEF08A;border-radius:50%;"></span> Janela fértil</span>
+            <span class="leg-estimativa" style="display:inline-flex;align-items:center;gap:3px;"><span style="display:inline-block;width:12px;height:12px;background:#EAB308;border-radius:50%;"></span> Ovulação estimada</span>
         </div>
     </div>
 
@@ -269,12 +301,41 @@
         <div id="registo-estado" style="margin-top:10px; font-size:0.82rem; color:var(--cinza-meio);"></div>
     </div>
 
+    <!-- REGISTOS OPCIONAIS -->
+    <div class="card">
+        <div class="card-titulo">Registos opcionais</div>
+        <p style="font-size:0.82rem; color:var(--cinza-meio); margin-bottom:12px;">
+            Aplicam-se ao dia selecionado no calendário: <strong id="opcionais-dia"></strong>
+        </p>
+        <div class="opcionais-botoes">
+            <button id="btn-relacoes" onclick="alternarRelacoes()">♥ Relações</button>
+            <button onclick="registarGravidez()">Teste de gravidez positivo</button>
+            <button onclick="pedirPerda()">Perda</button>
+        </div>
+    </div>
+
     <!-- HISTÓRICO -->
     <div class="card">
         <div class="card-titulo">Histórico de ciclos</div>
         <div id="historico-ciclos" style="color:var(--cinza-meio); font-size:0.9rem;">A carregar...</div>
+        <div id="historico-eventos-wrap" style="display:none; margin-top:16px;">
+            <div class="card-titulo">Registos opcionais</div>
+            <div id="historico-eventos" style="font-size:0.9rem;"></div>
+        </div>
     </div>
 
+</div>
+
+<!-- CONFIRMAÇÃO -->
+<div class="modal-overlay" id="modal-confirmar">
+    <div class="modal">
+        <div class="modal-titulo" id="confirmar-titulo"></div>
+        <p id="confirmar-texto" style="font-size:0.9rem; color:var(--cinza-meio); margin-bottom:18px;"></p>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-secundario" style="flex:1;" onclick="responderConfirmacao(false)">Cancelar</button>
+            <button class="btn btn-primario" style="flex:2;" id="confirmar-ok" onclick="responderConfirmacao(true)">Confirmar</button>
+        </div>
+    </div>
 </div>
 
 <div id="toast"></div>
@@ -319,6 +380,7 @@ verificarAuth();
 
 // ---- ESTADO ----
 let ciclos = [];
+let eventos = []; // ciclo_eventos (relacao | gravidez | perda | teste_ovulacao)
 let mesAtual = new Date();
 let dataSelecionada = CicloCalc.hojeLocal();
 let cicloAberto = null; // ciclo com início mas sem fim
@@ -353,19 +415,45 @@ async function carregarCiclos() {
     ciclos = data || [];
     cicloAberto = ciclos.find(c => !c.fim);
 
+    await carregarEventos();
+    renderTudo();
+}
+
+async function carregarEventos() {
+    const { data, error } = await db
+        .from('ciclo_eventos')
+        .select('*')
+        .order('data', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(300);
+    if (error) console.warn('ciclo_eventos:', error.message);
+    eventos = error ? [] : (data || []);
+}
+
+function renderTudo() {
     renderPrevisao();
     renderFaseAtual();
     renderTimeline();
     renderCalendario();
     renderHistorico();
+    renderEventos();
     atualizarBotoesRegisto();
+}
+
+// Modo gravidez: devolve { evento, g } quando ativo, senão null
+function gravidezAtiva() {
+    const m = CicloCalc.modoGravidez(eventos);
+    if (!m.ativo) return null;
+    return { evento: m.evento, g: CicloCalc.semanasGravidez(ciclos, hoje()) };
 }
 
 // ---- PREVISÃO ----
 function renderPrevisao() {
     const el = document.getElementById('previsao-wrap');
     const f = CicloCalc.faseAtual(ciclos, hoje());
-    if (!f) { el.innerHTML = ''; return; }
+    const emGravidez = !!gravidezAtiva();
+    document.getElementById('aviso-estimativa').hidden = emGravidez;
+    if (!f || emGravidez) { el.innerHTML = ''; return; }
 
     const j = f.janela;
     const ciclosTxt = f.ciclosUsados > 0
@@ -389,6 +477,17 @@ function renderPrevisao() {
 function renderFaseAtual() {
     const el = document.getElementById('fase-atual-wrap');
     const f = CicloCalc.faseAtual(ciclos, hoje());
+
+    const gr = gravidezAtiva();
+    if (gr) {
+        el.innerHTML = `
+            <div class="card-titulo">Gravidez</div>
+            <div style="font-weight:700; font-size:1.2rem; color:var(--azul-escuro);">${CicloCalc.textoGravidez(gr.g)}</div>
+            <div style="font-size:0.82rem; color:var(--cinza-meio); margin-top:6px;">${CicloCalc.TEXTO_GRAVIDEZ}</div>
+            <button class="btn btn-secundario" style="margin-top:14px;" onclick="pedirTerminarGravidez()">Terminar modo gravidez</button>`;
+        return;
+    }
+
     if (!f) {
         el.innerHTML = `
             <div style="text-align:center; padding:8px;">
@@ -422,16 +521,16 @@ function renderDicasFase(nomeF, diasCiclo) {
     var DICAS = {
         'Menstrual': { cor:'#FEE2E2', ct:'#991B1B',
             nut:['Aumenta ferro: espinafres, lentilhas','Magn\u00e9sio: nozes, chocolate 70%','Hidrata\u00e7\u00e3o extra'],
-            sens:['Energia mais baixa nos primeiros dias','Sensibilidade mam\u00e1ria pode aparecer','Podes sentir mais frio e fadiga'] },
+            sens:'Algumas pessoas sentem menos energia nos primeiros dias, cansaço, sensibilidade mamária ou mais frio. Se não sentires nada disto, também é normal.' },
         'Folicular': { cor:'#DCFCE7', ct:'#166534',
             nut:['Prote\u00edna para ganho muscular','Hidratos complexos para energia','Creatina p\u00f3s-treino'],
-            sens:['Energia crescente \u2014 aproveita!','Motiva\u00e7\u00e3o e foco mais altos','Recupera\u00e7\u00e3o mais r\u00e1pida'] },
+            sens:'Algumas pessoas sentem a energia a subir aos poucos, mais disposição para treinar e uma recuperação mais rápida. Se não sentires nada disto, também é normal.' },
         'Janela f\u00e9rtil': { cor:'#FEF9C3', ct:'#854D0E',
             nut:['Antioxidantes: frutos vermelhos, vegetais','Prote\u00edna continua importante','Evita ultra-processados'],
-            sens:['Energia e libido no m\u00e1ximo','Podes sentir ligeira dor p\u00e9lvica','Humor positivo e soci\u00e1vel'] },
+            sens:'Algumas pessoas sentem uma ligeira dor ou pressão no baixo-ventre, alterações no muco cervical ou mais disposição. Se não sentires nada disto, também é normal.' },
         'L\u00fatea': { cor:'#F3E8FF', ct:'#581C87',
             nut:['Magn\u00e9sio: nozes, sementes de ab\u00f3bora','Menos cafe\u00edna se tiveres ins\u00f3nias','Chocolate negro para cravings'],
-            sens:['Energia vari\u00e1vel','Reten\u00e7\u00e3o h\u00eddrica pode aumentar 1-2kg','Irritabilidade ou humor baixo s\u00e3o normais'] }
+            sens:'Algumas pessoas sentem a energia a variar, retenção de líquidos, irritabilidade ou humor mais em baixo, sobretudo perto da menstruação. Se não sentires nada disto, também é normal.' }
     };
     var d = DICAS[nomeF];
     if (!d) return '';
@@ -444,7 +543,8 @@ function renderDicasFase(nomeF, diasCiclo) {
         + '<div style="font-weight:700;font-size:0.78rem;text-transform:uppercase;color:' + d.ct + ';margin-bottom:10px;">O que esperar \u00b7 Dia ' + diasCiclo + '</div>'
         + '<div style="display:grid;gap:10px;">'
         + sec('\ud83e\udd57', 'Nutri\u00e7\u00e3o', d.nut)
-        + sec('\ud83d\udcad', 'O que podes sentir', d.sens)
+        + '<div><div style="font-size:0.75rem;font-weight:700;color:' + d.ct + ';margin-bottom:4px;">\ud83d\udcad O que podes sentir</div>'
+        + '<p style="margin:0;font-size:0.82rem;line-height:1.5;">' + d.sens + '</p></div>'
         + '</div></div>';
 }
 
@@ -453,7 +553,7 @@ function renderTimeline() {
     const card = document.getElementById('timeline-wrap-card');
     const f = CicloCalc.faseAtual(ciclos, hoje());
     const est = CicloCalc.estruturaCiclo(ciclos);
-    if (!f || !est) { card.style.display = 'none'; return; }
+    if (!f || !est || gravidezAtiva()) { card.style.display = 'none'; return; }
     card.style.display = 'block';
 
     // Barra
@@ -470,8 +570,13 @@ function renderTimeline() {
     const pct = Math.min(100, ((f.dia - 0.5) / est.total) * 100);
     document.getElementById('timeline-marcador').style.left = pct + '%';
 
+    // Rótulos: início, ovulação estimada (posicionada no seu dia) e último dia
+    const ovDia = CicloCalc.diferencaDias(f.ovulacao, ciclos[0].inicio) + 1;
+    const ovPct = Math.min(88, Math.max(12, ((ovDia - 0.5) / est.total) * 100));
     document.getElementById('timeline-labels').innerHTML =
-        `<span>Dia 1</span><span>Dia ${Math.round(est.total / 2)}</span><span>Dia ${est.total}</span>`;
+        `<span class="lbl-ini">Dia 1</span>` +
+        `<span class="lbl-ov" style="left:${ovPct}%;">Ovulação (dia ${ovDia})</span>` +
+        `<span class="lbl-fim">Dia ${est.total}</span>`;
 
     // Legenda
     document.getElementById('fase-legenda').innerHTML = est.segmentos.map(s => {
@@ -514,9 +619,14 @@ function renderCalendario() {
         `${ano}-${pad(mes + 1)}-${pad(ultimoDia)}`
     );
 
+    const emGravidez = !!gravidezAtiva();
+    const diasRelacoes = new Set(eventos.filter(e => e.tipo === 'relacao').map(e => e.data));
+
     for (let d = 1; d <= ultimoDia; d++) {
         const dataStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const info = mapaFases[dataStr] || {};
+        const info = Object.assign({}, mapaFases[dataStr]);
+        if (emGravidez) { delete info.janela; delete info.ovulacao; delete info.previsao; }
+        if (diasRelacoes.has(dataStr)) info.relacao = true;
         const isHoje = dataStr === hoje();
         const isSelecionado = dataStr === dataSelecionada;
 
@@ -527,6 +637,7 @@ function renderCalendario() {
         if (!info.periodo && info.ovulacao) classes += ' ovulacao';
         else if (!info.periodo && info.janela) classes += ' janela';
         if (info.previsao) classes += ' previsao';
+        if (info.relacao) classes += ' relacao';
         if (isHoje) classes += ' hoje';
 
         const estilo = isSelecionado ? 'outline: 3px solid var(--azul-escuro); outline-offset: 1px;' : '';
@@ -535,6 +646,8 @@ function renderCalendario() {
     }
 
     grid.innerHTML = html;
+    document.querySelectorAll(".leg-estimativa").forEach(el => { el.style.display = emGravidez ? "none" : "inline-flex"; });
+    atualizarOpcionais();
 }
 
 function mudarMes(delta) {
@@ -640,6 +753,176 @@ function renderHistorico() {
                     ${duracaoFluxo}
                     ${c.notas ? ' · ' + c.notas : ''}
                 </div>
+            </div>`;
+    }).join('');
+}
+
+// ============================================
+// REGISTOS OPCIONAIS (ciclo_eventos)
+// ============================================
+
+const ROTULOS_EVENTO = {
+    relacao: 'Relações',
+    gravidez: 'Teste de gravidez positivo',
+    perda: 'Perda registada',
+    teste_ovulacao: 'Teste de ovulação'
+};
+
+// ---- confirmação (modal da própria página) ----
+let _confirmarResolve = null;
+
+function pedirConfirmacao(titulo, texto, rotuloOk) {
+    document.getElementById('confirmar-titulo').textContent = titulo;
+    document.getElementById('confirmar-texto').textContent = texto;
+    document.getElementById('confirmar-ok').textContent = rotuloOk || 'Confirmar';
+    document.getElementById('modal-confirmar').classList.add('open');
+    return new Promise(resolve => { _confirmarResolve = resolve; });
+}
+
+function responderConfirmacao(valor) {
+    document.getElementById('modal-confirmar').classList.remove('open');
+    const r = _confirmarResolve;
+    _confirmarResolve = null;
+    if (r) r(valor);
+}
+
+document.getElementById('modal-confirmar').addEventListener('click', e => {
+    if (e.target.id === 'modal-confirmar') responderConfirmacao(false);
+});
+
+// ---- estado dos botões ----
+function diaOpcional() {
+    return document.getElementById('data-selecionada').value || dataSelecionada;
+}
+
+function eventosDoDia(data, tipo) {
+    return eventos.filter(e => e.data === data && e.tipo === tipo);
+}
+
+function atualizarOpcionais() {
+    const dia = diaOpcional();
+    document.getElementById('opcionais-dia').textContent = dia ? formatarDataLonga(dia) : '—';
+    document.getElementById('btn-relacoes').className =
+        eventosDoDia(dia, 'relacao').length ? 'ativo-relacao' : '';
+}
+
+function diaValido() {
+    const dia = diaOpcional();
+    if (!dia) { mostrarToast('Seleciona uma data'); return null; }
+    if (dia > hoje()) { mostrarToast('Escolhe um dia que não seja futuro'); return null; }
+    return dia;
+}
+
+// ---- ações ----
+async function guardarEvento(tipo, data) {
+    const { error } = await db.from('ciclo_eventos').insert({ data, tipo });
+    if (error) { console.error(error); mostrarToast('Erro ao guardar 😕'); return false; }
+    return true;
+}
+
+async function alternarRelacoes() {
+    const dia = diaValido();
+    if (!dia) return;
+
+    const existentes = eventosDoDia(dia, 'relacao');
+    if (existentes.length) {
+        const { error } = await db.from('ciclo_eventos').delete().in('id', existentes.map(e => e.id));
+        if (error) { console.error(error); mostrarToast('Erro ao guardar 😕'); return; }
+        mostrarToast('Registo removido');
+    } else {
+        if (!(await guardarEvento('relacao', dia))) return;
+        mostrarToast('Registado ✓');
+    }
+    await carregarEventos();
+    renderTudo();
+}
+
+async function registarGravidez() {
+    const dia = diaValido();
+    if (!dia) return;
+    if (gravidezAtiva()) { mostrarToast('O modo gravidez já está ativo'); return; }
+    if (eventosDoDia(dia, 'gravidez').length) { mostrarToast('Já está registado neste dia'); return; }
+
+    if (!(await guardarEvento('gravidez', dia))) return;
+    mostrarToast('Registado ✓');
+    await carregarEventos();
+    renderTudo();
+}
+
+async function pedirPerda() {
+    const dia = diaValido();
+    if (!dia) return;
+
+    const ok = await pedirConfirmacao(
+        'Registar perda',
+        `Queres registar este evento no dia ${formatarDataLonga(dia)}? Fica guardado apenas no histórico e podes apagá-lo mais tarde.`,
+        'Registar'
+    );
+    if (!ok) return;
+
+    if (!(await guardarEvento('perda', dia))) return;
+    mostrarToast('Registado');
+    await carregarEventos();
+    renderTudo();
+}
+
+async function pedirTerminarGravidez() {
+    const gr = gravidezAtiva();
+    if (!gr) return;
+
+    const ok = await pedirConfirmacao(
+        'Terminar modo gravidez',
+        'O modo gravidez termina e o seguimento normal do ciclo é retomado. Isto não regista nenhuma perda.',
+        'Terminar'
+    );
+    if (!ok) return;
+
+    const nota = CicloCalc.MARCA_TERMINADA + (gr.evento.nota ? ' ' + gr.evento.nota : '');
+    const { error } = await db.from('ciclo_eventos').update({ nota }).eq('id', gr.evento.id);
+    if (error) { console.error(error); mostrarToast('Erro ao guardar 😕'); return; }
+
+    await carregarEventos();
+    renderTudo();
+}
+
+async function pedirApagarEvento(id) {
+    const ev = eventos.find(e => String(e.id) === String(id));
+    if (!ev) return;
+
+    const ok = await pedirConfirmacao(
+        'Apagar registo',
+        `Queres apagar "${ROTULOS_EVENTO[ev.tipo] || ev.tipo}" de ${formatarDataLonga(ev.data)}?`,
+        'Apagar'
+    );
+    if (!ok) return;
+
+    const { error } = await db.from('ciclo_eventos').delete().eq('id', id);
+    if (error) { console.error(error); mostrarToast('Erro ao apagar 😕'); return; }
+
+    await carregarEventos();
+    renderTudo();
+}
+
+// ---- histórico de eventos ----
+function renderEventos() {
+    const wrap = document.getElementById('historico-eventos-wrap');
+    const el = document.getElementById('historico-eventos');
+    if (!eventos.length) { wrap.style.display = 'none'; el.innerHTML = ''; return; }
+    wrap.style.display = 'block';
+
+    el.innerHTML = eventos.map(e => {
+        const terminado = typeof e.nota === 'string' && e.nota.indexOf(CicloCalc.MARCA_TERMINADA) === 0;
+        const notaLivre = (e.nota || '').replace(CicloCalc.MARCA_TERMINADA, '').trim();
+        const extra = [terminado ? 'modo terminado' : '', notaLivre].filter(Boolean).join(' · ');
+        const dataStr = new Date(e.data + 'T00:00:00')
+            .toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+        return `
+            <div class="evento-linha">
+                <div style="min-width:0;">
+                    <div style="font-weight:600; font-size:0.88rem; color:var(--cinza-texto);">${ROTULOS_EVENTO[e.tipo] || e.tipo}</div>
+                    <div style="font-size:0.78rem; color:var(--cinza-meio);">${dataStr}${extra ? ' · ' + extra : ''}</div>
+                </div>
+                <button onclick="pedirApagarEvento('${e.id}')" aria-label="Apagar registo">Apagar</button>
             </div>`;
     }).join('');
 }

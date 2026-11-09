@@ -271,7 +271,47 @@
         return mapa;
     }
 
+    // ---------- modo gravidez ----------
+    // Eventos: { id, data: 'AAAA-MM-DD', tipo: 'relacao'|'gravidez'|'perda'|'teste_ovulacao', nota }.
+    // Os eventos NÃO entram em cicloMedio/previsões.
+    // O modo termina por uma 'perda' posterior ao teste, ou manualmente: nesse caso a
+    // nota do evento 'gravidez' fica com o prefixo MARCA_TERMINADA (sem registar perda).
+    const MARCA_TERMINADA = '[modo terminado]';
+    const TEXTO_GRAVIDEZ = 'Contagem desde o início do último período. Não substitui o acompanhamento médico.';
+
+    function modoGravidez(eventos) {
+        const gravidezes = (eventos || [])
+            .filter(e => e && e.tipo === 'gravidez' && e.data)
+            .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+        if (!gravidezes.length) return { ativo: false, evento: null };
+
+        const ultima = gravidezes[gravidezes.length - 1];
+        const terminada = typeof ultima.nota === 'string' && ultima.nota.indexOf(MARCA_TERMINADA) === 0;
+        const perdaPosterior = (eventos || []).some(e => e && e.tipo === 'perda' && e.data >= ultima.data);
+
+        return { ativo: !terminada && !perdaPosterior, evento: ultima };
+    }
+
+    // Semana gestacional (X+Y) desde o início do último período que começou até `hoje`.
+    function semanasGravidez(registos, hoje) {
+        hoje = hoje || hojeLocal();
+        const anteriores = ordenados(registos).filter(r => r.inicio <= hoje);
+        if (!anteriores.length) return null;
+        const inicio = anteriores[anteriores.length - 1].inicio;
+        const total = diferencaDias(hoje, inicio);
+        return { semanas: Math.floor(total / 7), dias: total % 7, totalDias: total, inicio: inicio };
+    }
+
+    function textoGravidez(g) {
+        return g ? 'Gravidez: semana ' + g.semanas + '+' + g.dias : 'Gravidez';
+    }
+
     return {
+        MARCA_TERMINADA: MARCA_TERMINADA,
+        TEXTO_GRAVIDEZ: TEXTO_GRAVIDEZ,
+        modoGravidez: modoGravidez,
+        semanasGravidez: semanasGravidez,
+        textoGravidez: textoGravidez,
         AVISO_ESTIMATIVA: AVISO_ESTIMATIVA,
         FASES_INFO: FASES_INFO,
         cicloMedio: cicloMedio,

@@ -218,6 +218,21 @@ async function carregarCicloResumido() {
             .order('inicio', { ascending: false })
             .limit(24);
 
+        // Modo gravidez: esconde janela fértil, ovulação e previsão
+        const { data: eventos, error: erroEventos } = await db
+            .from('ciclo_eventos')
+            .select('data, tipo, nota')
+            .in('tipo', ['gravidez', 'perda']);
+        const gravidez = CicloCalc.modoGravidez(erroEventos ? [] : (eventos || []));
+        if (gravidez.ativo) {
+            const g = CicloCalc.semanasGravidez(rows || [], CicloCalc.hojeLocal());
+            container.innerHTML = `
+                <div style="font-weight:700; font-size:1.05rem; color:var(--azul-escuro);">${CicloCalc.textoGravidez(g)}</div>
+                <div style="margin-top:6px; font-size:0.8rem; color:var(--cinza-meio);">${CicloCalc.TEXTO_GRAVIDEZ}</div>
+            `;
+            return;
+        }
+
         const f = CicloCalc.faseAtual(rows || [], CicloCalc.hojeLocal());
         if (!f) {
             container.innerHTML = `<span style="color:var(--cinza-meio); font-size:0.9rem;">Sem registos. Vai ao separador Ciclo para adicionar.</span>`;

@@ -95,5 +95,56 @@ caso('um único registo usa 28 dias', () => {
     assert.equal(C.faseAtual([], '2026-03-12'), null);
 });
 
+caso('modo gravidez: sem gravidez', () => {
+    assert.equal(C.modoGravidez([]).ativo, false);
+    assert.equal(C.modoGravidez(undefined).ativo, false);
+    // relações e testes de ovulação não ativam o modo
+    const ev = [
+        { id: 1, data: '2026-04-10', tipo: 'relacao', nota: null },
+        { id: 2, data: '2026-04-12', tipo: 'teste_ovulacao', nota: null }
+    ];
+    assert.equal(C.modoGravidez(ev).ativo, false);
+    // só uma perda, sem gravidez
+    assert.equal(C.modoGravidez([{ id: 3, data: '2026-04-12', tipo: 'perda' }]).ativo, false);
+});
+
+caso('modo gravidez: gravidez ativa e contagem de semanas', () => {
+    const ev = [
+        { id: 1, data: '2026-04-10', tipo: 'relacao', nota: null },
+        { id: 2, data: '2026-04-20', tipo: 'gravidez', nota: null }
+    ];
+    const m = C.modoGravidez(ev);
+    assert.equal(m.ativo, true);
+    assert.equal(m.evento.id, 2);
+
+    const r = [{ inicio: '2026-02-01', fim: '2026-02-05' }, { inicio: '2026-03-01', fim: '2026-03-05' }];
+    // 1 de março -> 12 de abril = 42 dias = 6+0
+    assert.deepEqual(C.semanasGravidez(r, '2026-04-12'), { semanas: 6, dias: 0, totalDias: 42, inicio: '2026-03-01' });
+    // 45 dias = 6+3
+    const g = C.semanasGravidez(r, '2026-04-15');
+    assert.equal(g.semanas, 6);
+    assert.equal(g.dias, 3);
+    assert.equal(C.textoGravidez(g), 'Gravidez: semana 6+3');
+    assert.equal(C.semanasGravidez([], '2026-04-15'), null);
+
+    // terminado manualmente: deixa de estar ativo sem existir perda
+    const terminado = [{ id: 2, data: '2026-04-20', tipo: 'gravidez', nota: C.MARCA_TERMINADA }];
+    assert.equal(C.modoGravidez(terminado).ativo, false);
+});
+
+caso('modo gravidez: gravidez seguida de perda', () => {
+    const ev = [
+        { id: 1, data: '2026-04-20', tipo: 'gravidez', nota: null },
+        { id: 2, data: '2026-05-10', tipo: 'perda', nota: null }
+    ];
+    assert.equal(C.modoGravidez(ev).ativo, false);
+
+    // nova gravidez depois da perda volta a ativar o modo
+    ev.push({ id: 3, data: '2026-08-01', tipo: 'gravidez', nota: null });
+    const m = C.modoGravidez(ev);
+    assert.equal(m.ativo, true);
+    assert.equal(m.evento.id, 3);
+});
+
 if (falhas) { console.log('\n' + falhas + ' teste(s) falharam'); process.exit(1); }
 console.log('\nTodos os testes passaram');
