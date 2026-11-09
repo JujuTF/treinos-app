@@ -24,10 +24,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     await verificarAuth();
     setarDataHeader();
     configurarTreino();
+    configurarNotas();
     await carregarSessoes();
     mostrarDeployInfo();
     await carregarDiaHoje();
     await carregarCicloResumido();
+    await carregarNotas();
 });
 
 // ---- UTILS ----
@@ -395,4 +397,99 @@ async function carregarCicloResumido() {
     } catch (e) {
         container.innerHTML = `<span style="color:var(--cinza-meio); font-size:0.9rem;">Não foi possível carregar o ciclo.</span>`;
     }
+}
+
+// ============================================
+// NOTAS — cartão no ecrã Hoje (tabela `notas`)
+// O texto das notas é sempre inserido com textContent, nunca com innerHTML.
+// ============================================
+
+function configurarNotas() {
+    const input = document.getElementById('nota-input');
+    if (!input) return;
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.isComposing) {
+            e.preventDefault();
+            adicionarNota();
+        }
+    });
+}
+
+async function carregarNotas() {
+    const lista = document.getElementById('notas-lista');
+    if (!lista) return;
+
+    const { data, error } = await db
+        .from('notas')
+        .select('id, texto, fixada, feita, created_at')
+        .eq('feita', false)
+        .order('fixada', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+    lista.textContent = '';
+    if (error) {
+        console.warn('notas:', error.message);
+        return;
+    }
+
+    if (!data || !data.length) {
+        const vazio = document.createElement('div');
+        vazio.className = 'nota-vazio';
+        vazio.textContent = 'Sem notas por agora. Escreve a primeira acima.';
+        lista.appendChild(vazio);
+        return;
+    }
+
+    data.forEach(n => {
+        const linha = document.createElement('div');
+        linha.className = 'nota-linha';
+
+        const caixa = document.createElement('button');
+        caixa.className = 'nota-caixa';
+        caixa.setAttribute('aria-label', 'Marcar como feita');
+        caixa.addEventListener('click', () => marcarNotaFeita(n.id));
+
+        const texto = document.createElement('div');
+        texto.className = 'nota-texto';
+        texto.textContent = n.texto;
+
+        linha.appendChild(caixa);
+        linha.appendChild(texto);
+        if (n.fixada) {
+            const pin = document.createElement('span');
+            pin.className = 'nota-pin';
+            pin.textContent = '📌';
+            linha.appendChild(pin);
+        }
+        lista.appendChild(linha);
+    });
+}
+
+async function adicionarNota() {
+    const input = document.getElementById('nota-input');
+    const texto = input.value.trim();
+    if (!texto) return;
+
+    const { error } = await db.from('notas').insert({ texto: texto });
+    if (error) {
+        console.error(error);
+        mostrarToast('Não foi possível guardar 😕');
+        return;
+    }
+    input.value = '';
+    await carregarNotas();
+}
+
+async function marcarNotaFeita(id) {
+    const { error } = await db
+        .from('notas')
+        .update({ feita: true, feita_em: new Date().toISOString() })
+        .eq('id', id);
+    if (error) {
+        console.error(error);
+        mostrarToast('Não foi possível guardar 😕');
+        return;
+    }
+    await carregarNotas();
 }

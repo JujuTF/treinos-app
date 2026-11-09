@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Notas</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232A9D8F'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
+    <style>
+        .pesquisa {
+            width: 100%;
+            padding: 10px 14px;
+            margin-bottom: 14px;
+            border: 1.5px solid var(--cinza-borda);
+            border-radius: var(--radius-sm);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            background: var(--branco);
+            color: var(--cinza-texto);
+        }
+        .pesquisa:focus { outline: none; border-color: var(--verde); }
+        .nota-linha .nota-texto { cursor: text; }
+        .nota-linha.feita .nota-texto { text-decoration: line-through; color: var(--cinza-meio); }
+        .nota-linha.feita .nota-caixa { background: var(--verde); border-color: var(--verde); }
+        .nota-linha.feita .nota-caixa::after { content: '✓'; }
+        .nota-editar {
+            flex: 1; min-width: 0;
+            padding: 6px 8px;
+            border: 1.5px solid var(--verde);
+            border-radius: var(--radius-sm);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.92rem;
+            color: var(--cinza-texto);
+        }
+        .nota-acao {
+            flex-shrink: 0;
+            background: none; border: none; cursor: pointer;
+            padding: 2px 6px;
+            font-size: 1rem; line-height: 1.4;
+            color: var(--cinza-borda);
+        }
+        .nota-acao.ativo, .nota-acao:hover { color: var(--cinza-meio); }
+        .nota-acao.pin.ativo { color: inherit; }
+        .nota-acao.pin { filter: grayscale(1); opacity: 0.45; }
+        .nota-acao.pin.ativo { filter: none; opacity: 1; }
+        .seccao-titulo {
+            font-size: 0.72rem; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--cinza-meio); margin-bottom: 6px;
+        }
+        .linha-feitas {
+            display: flex; align-items: center; justify-content: space-between; width: 100%;
+            background: none; border: none; cursor: pointer; padding: 2px 0;
+            font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 600;
+            color: var(--cinza-meio);
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div style="display:flex; align-items:center; gap:10px;">
+        <a href="index.html" style="color:var(--cinza-meio); display:flex;" aria-label="Voltar">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M15 19l-7-7 7-7"/>
+            </svg>
+        </a>
+        <h1>Notas</h1>
+    </div>
+</header>
+
+<div class="page active">
+
+    <div class="nota-nova">
+        <input type="text" id="nota-input" maxlength="500" placeholder="Escreve uma nota..." enterkeyhint="done" autocomplete="off">
+        <button type="button" id="nota-add" aria-label="Adicionar nota">+</button>
+    </div>
+
+    <input type="search" class="pesquisa" id="pesquisa" placeholder="Pesquisar notas" autocomplete="off">
+
+    <div id="vazio" class="card" hidden>
+        <div class="vazio">
+            <div class="vazio-icon">📝</div>
+            <p id="vazio-texto"></p>
+        </div>
+    </div>
+
+    <div class="card" id="card-fixadas" hidden>
+        <div class="seccao-titulo">📌 Fixadas</div>
+        <div id="lista-fixadas"></div>
+    </div>
+
+    <div class="card" id="card-fazer" hidden>
+        <div class="seccao-titulo">Por fazer</div>
+        <div id="lista-fazer"></div>
+    </div>
+
+    <div class="card" id="card-feitas" hidden>
+        <button class="linha-feitas" id="toggle-feitas" aria-expanded="false">
+            <span id="rotulo-feitas">Feitas</span><span id="seta-feitas">▾</span>
+        </button>
+        <div id="lista-feitas" style="margin-top:8px;" hidden></div>
+    </div>
+
+</div>
+
+<!-- CONFIRMAÇÃO -->
+<div class="modal-overlay" id="modal-confirmar">
+    <div class="modal">
+        <div class="modal-titulo">Apagar nota</div>
+        <p id="confirmar-texto" style="font-size:0.9rem; color:var(--cinza-meio); margin-bottom:18px; overflow-wrap:anywhere;"></p>
+        <div style="display:flex; gap:10px;">
+            <button class="btn btn-secundario" style="flex:1;" onclick="responderConfirmacao(false)">Cancelar</button>
+            <button class="btn btn-primario" style="flex:2;" onclick="responderConfirmacao(true)">Apagar</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<nav class="nav-bottom">
+    <a class="nav-item active" href="index.html">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+        </svg>
+        Hoje
+    </a>
+    <a class="nav-item" href="ciclo.html">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>
+        </svg>
+        Ciclo
+    </a>
+    <a class="nav-item" href="stats.html">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        Insights
+    </a>
+    <a class="nav-item" href="corpo.html">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+        </svg>
+        Corpo
+    </a>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script>
+// Todo o texto das notas entra na página com textContent / value, nunca com innerHTML.
+
+async function verificarAuth() {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) window.location.href = 'login.html';
+}
+
+let notas = [];
+let feitasAbertas = false;
+let _confirmarResolve = null;
+const DIAS_FEITAS = 30;
+
+function mostrarToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function pedirConfirmacao(texto) {
+    document.getElementById('confirmar-texto').textContent = texto;
+    document.getElementById('modal-confirmar').classList.add('open');
+    return new Promise(resolve => { _confirmarResolve = resolve; });
+}
+
+function responderConfirmacao(valor) {
+    document.getElementById('modal-confirmar').classList.remove('open');
+    const r = _confirmarResolve;
+    _confirmarResolve = null;
+    if (r) r(valor);
+}
+
+document.getElementById('modal-confirmar').addEventListener('click', e => {
+    if (e.target.id === 'modal-confirmar') responderConfirmacao(false);
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await verificarAuth();
+
+    const input = document.getElementById('nota-input');
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); adicionarNota(); }
+    });
+    document.getElementById('nota-add').addEventListener('click', adicionarNota);
+    document.getElementById('pesquisa').addEventListener('input', render);
+    document.getElementById('toggle-feitas').addEventListener('click', () => {
+        feitasAbertas = !feitasAbertas;
+        render();
+    });
+
+    await carregarNotas();
+});
+
+async function carregarNotas() {
+    const { data, error } = await db
+        .from('notas')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(500);
+    if (error) {
+        console.warn('notas:', error.message);
+        mostrarToast('Não foi possível carregar as notas');
+    }
+    notas = error ? [] : (data || []);
+    render();
+}
+
+// ---- dados ----
+async function adicionarNota() {
+    const input = document.getElementById('nota-input');
+    const texto = input.value.trim();
+    if (!texto) return;
+
+    const { error } = await db.from('notas').insert({ texto: texto });
+    if (error) { console.error(error); mostrarToast('Não foi possível guardar 😕'); return; }
+    input.value = '';
+    await carregarNotas();
+}
+
+async function atualizarNota(n, campos) {
+    const { error } = await db.from('notas').update(campos).eq('id', n.id);
+    if (error) { console.error(error); mostrarToast('Não foi possível guardar 😕'); await carregarNotas(); return false; }
+    Object.assign(n, campos);
+    render();
+    return true;
+}
+
+function alternarFeita(n) {
+    const feita = !n.feita;
+    atualizarNota(n, { feita: feita, feita_em: feita ? new Date().toISOString() : null });
+}
+
+function alternarFixada(n) {
+    atualizarNota(n, { fixada: !n.fixada });
+}
+
+async function apagarNota(n) {
+    const ok = await pedirConfirmacao('Queres apagar esta nota? "' + n.texto + '"');
+    if (!ok) return;
+    const { error } = await db.from('notas').delete().eq('id', n.id);
+    if (error) { console.error(error); mostrarToast('Não foi possível apagar 😕'); return; }
+    notas = notas.filter(x => x.id !== n.id);
+    render();
+}
+
+// ---- edição no próprio sítio ----
+function editarNota(n, elTexto) {
+    const campo = document.createElement('input');
+    campo.type = 'text';
+    campo.className = 'nota-editar';
+    campo.maxLength = 500;
+    campo.value = n.texto;
+    elTexto.replaceWith(campo);
+    campo.focus();
+    campo.select();
+
+    let terminado = false;
+    const terminar = async guardar => {
+        if (terminado) return;
+        terminado = true;
+        const novo = campo.value.trim();
+        if (guardar && novo && novo !== n.texto) await atualizarNota(n, { texto: novo });
+        else render();
+    };
+    campo.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); terminar(true); }
+        else if (e.key === 'Escape') { terminar(false); }
+    });
+    campo.addEventListener('blur', () => terminar(true));
+}
+
+// ---- apresentação ----
+function criarLinha(n) {
+    const linha = document.createElement('div');
+    linha.className = 'nota-linha' + (n.feita ? ' feita' : '');
+
+    const caixa = document.createElement('button');
+    caixa.className = 'nota-caixa';
+    caixa.setAttribute('aria-label', n.feita ? 'Marcar como por fazer' : 'Marcar como feita');
+    caixa.addEventListener('click', () => alternarFeita(n));
+
+    const texto = document.createElement('div');
+    texto.className = 'nota-texto';
+    texto.textContent = n.texto;
+    texto.addEventListener('click', () => editarNota(n, texto));
+
+    const pin = document.createElement('button');
+    pin.className = 'nota-acao pin' + (n.fixada ? ' ativo' : '');
+    pin.textContent = '📌';
+    pin.setAttribute('aria-label', n.fixada ? 'Desafixar' : 'Fixar');
+    pin.setAttribute('aria-pressed', n.fixada ? 'true' : 'false');
+    pin.addEventListener('click', () => alternarFixada(n));
+
+    const apagar = document.createElement('button');
+    apagar.className = 'nota-acao';
+    apagar.textContent = '✕';
+    apagar.setAttribute('aria-label', 'Apagar nota');
+    apagar.addEventListener('click', () => apagarNota(n));
+
+    linha.appendChild(caixa);
+    linha.appendChild(texto);
+    linha.appendChild(pin);
+    linha.appendChild(apagar);
+    return linha;
+}
+
+function preencher(idLista, idCard, lista) {
+    const el = document.getElementById(idLista);
+    el.textContent = '';
+    lista.forEach(n => el.appendChild(criarLinha(n)));
+    document.getElementById(idCard).hidden = lista.length === 0;
+}
+
+function render() {
+    const q = document.getElementById('pesquisa').value.trim().toLowerCase();
+    const limite = Date.now() - DIAS_FEITAS * 86400000;
+    const filtra = n => !q || n.texto.toLowerCase().indexOf(q) !== -1;
+
+    const porCriacao = (a, b) => String(b.created_at).localeCompare(String(a.created_at));
+    const fixadas = notas.filter(n => !n.feita && n.fixada && filtra(n)).sort(porCriacao);
+    const porFazer = notas.filter(n => !n.feita && !n.fixada && filtra(n)).sort(porCriacao);
+    const feitas = notas
+        .filter(n => n.feita && filtra(n) && new Date(n.feita_em || n.created_at).getTime() >= limite)
+        .sort((a, b) => String(b.feita_em || '').localeCompare(String(a.feita_em || '')));
+
+    preencher('lista-fixadas', 'card-fixadas', fixadas);
+    preencher('lista-fazer', 'card-fazer', porFazer);
+
+    // "Feitas": fechada por defeito (últimos 30 dias)
+    const cardFeitas = document.getElementById('card-feitas');
+    const listaFeitas = document.getElementById('lista-feitas');
+    cardFeitas.hidden = feitas.length === 0;
+    document.getElementById('rotulo-feitas').textContent = 'Feitas (' + feitas.length + ')';
+    document.getElementById('seta-feitas').textContent = feitasAbertas ? '▴' : '▾';
+    document.getElementById('toggle-feitas').setAttribute('aria-expanded', feitasAbertas ? 'true' : 'false');
+    listaFeitas.hidden = !feitasAbertas;
+    listaFeitas.textContent = '';
+    if (feitasAbertas) feitas.forEach(n => listaFeitas.appendChild(criarLinha(n)));
+
+    // estados vazios
+    const vazio = document.getElementById('vazio');
+    const nada = !fixadas.length && !porFazer.length && !feitas.length;
+    vazio.hidden = !nada;
+    document.getElementById('vazio-texto').textContent = q
+        ? 'Não encontrei nada com essa pesquisa.'
+        : 'Ainda não tens notas. Escreve a primeira lá em cima.';
+}
+</script>
+</body>
+</html>

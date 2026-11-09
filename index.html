@@ -45,8 +45,16 @@
         <button class="btn btn-primario btn-grande" onclick="abrirTreino()">Treinei hoje</button>
     </div>
 
-    <!-- Notas (a preencher no passo das notas) -->
-    <div id="notas-card"></div>
+    <!-- Notas -->
+    <div class="card" id="notas-card">
+        <div class="card-titulo">Notas</div>
+        <div class="nota-nova">
+            <input type="text" id="nota-input" maxlength="500" placeholder="Escreve uma nota..." enterkeyhint="done" autocomplete="off">
+            <button type="button" onclick="adicionarNota()" aria-label="Adicionar nota">+</button>
+        </div>
+        <div id="notas-lista"></div>
+        <a class="nota-link" href="notas.html">Ver todas</a>
+    </div>
 
     <!-- Esta semana -->
     <div id="resumo-semana"></div>
