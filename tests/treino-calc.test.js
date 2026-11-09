@@ -46,5 +46,27 @@ caso('semana, mês e últimas semanas', () => {
     assert.equal(T.semanasRecentes(datas, '2026-11-09', 8).length, 8);
 });
 
+caso('nível atual: objetivo é o primeiro marco maior que a sequência', () => {
+    assert.deepEqual(T.nivelAtual(0), { nivel: 1, marco: 2, progresso: 0, maximo: false });
+    assert.deepEqual(T.nivelAtual(1), { nivel: 1, marco: 2, progresso: 0.5, maximo: false });
+    assert.equal(T.nivelAtual(2).marco, 5);
+    assert.equal(T.nivelAtual(2).nivel, 2);
+    assert.equal(T.nivelAtual(4).marco, 5);
+    assert.equal(T.nivelAtual(5).marco, 15);
+    assert.equal(T.nivelAtual(14).marco, 15);
+    assert.equal(T.nivelAtual(15).marco, 30);
+    assert.equal(T.nivelAtual(199).marco, 200);
+    assert.equal(T.nivelAtual(364).marco, 365);
+    assert.equal(T.nivelAtual(4).progresso, 0.8);
+});
+
+caso('nível atual: marco máximo e sequência partida', () => {
+    assert.deepEqual(T.nivelAtual(365), { nivel: 8, marco: 365, progresso: 1, maximo: true });
+    assert.equal(T.nivelAtual(500).maximo, true);
+    assert.equal(T.nivelAtual(500).progresso, 1);
+    // sequência parte-se -> volta ao objetivo 2
+    assert.equal(T.nivelAtual(T.sequenciaAtual(datas, '2026-11-09')).marco, 2);
+});
+
 if (falhas) { console.log('\n' + falhas + ' teste(s) falharam'); process.exit(1); }
 console.log('\nTodos os testes passaram');

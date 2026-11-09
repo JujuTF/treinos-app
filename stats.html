@@ -8,18 +8,42 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F766E'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
     <style>
-        .grelha-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .caixa {
-            text-align: center;
-            background: rgba(255, 255, 255, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.85);
-            border-radius: 20px;
-            padding: 16px 8px;
-        }
-        .caixa-valor { font-family: var(--fonte-t); font-size: 36px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; color: var(--tx); }
-        .caixa-rotulo { font-size: 13px; color: var(--tx2); margin-top: 6px; }
         .texto-suave { font-size: 15px; color: var(--tx); line-height: 1.5; }
         .nota-pequena { font-size: 12px; color: var(--tx2); margin-top: 10px; }
+
+        /* ---- NÍVEL (hero) ---- */
+        .nivel { display: flex; align-items: center; gap: 18px; min-height: 120px; }
+        .nivel-num { font-family: var(--fonte-t); font-size: 38px; font-weight: 700; line-height: 1; color: var(--tx); }
+        .nivel-de { font-size: 12px; font-weight: 500; color: var(--tx2); margin-top: 3px; }
+        .nivel-titulo { font-family: var(--fonte-t); font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--tx); line-height: 1.1; }
+        .nivel-frase { font-size: 14px; color: var(--tx2); margin-top: 6px; line-height: 1.4; }
+
+        /* ---- 3 ANÉIS ---- */
+        .aneis-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; min-height: 92px; }
+        .anel-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .anel-col-rot { font-size: 12px; font-weight: 500; color: var(--tx2); text-align: center; }
+
+        /* ---- ÚLTIMO TREINO ---- */
+        .card.compacto { padding-top: 14px; padding-bottom: 14px; }
+        .card.compacto .card-titulo { margin-bottom: 6px; }
+
+        /* ---- 8 SEMANAS ---- */
+        .semanas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px 6px; min-height: 140px; }
+        .sem-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+        .sem-item .anel { border-radius: 50%; }
+        .sem-item.atual .anel { box-shadow: 0 0 0 2px #4F46E5, 0 0 0 4px #fff; }
+        .sem-data { font-size: 12px; font-weight: 500; color: var(--tx2); }
+        .sem-item.atual .sem-data { color: var(--tx); font-weight: 700; }
+
+        /* ---- DONUT POR FASE ---- */
+        .fases { display: flex; align-items: center; gap: 18px; }
+        .fases-legenda { flex: 1; min-width: 0; list-style: none; display: grid; gap: 10px; }
+        .fases-legenda li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--tx); }
+        .fases-legenda i { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .fases-legenda span { flex: 1; min-width: 0; }
+        .fases-legenda strong { font-family: var(--fonte-t); font-weight: 700; }
+        .donut-total { font-family: var(--fonte-t); font-size: 30px; font-weight: 700; line-height: 1; color: var(--tx); }
+        .donut-rot { font-size: 12px; color: var(--tx2); margin-top: 3px; }
     </style>
 </head>
 <body>
@@ -30,36 +54,42 @@
 
 <div class="page active">
 
-    <!-- RESUMO -->
+    <!-- NÍVEL (hero): sequência atual face ao próximo marco -->
+    <div class="card" id="card-nivel">
+        <div class="card-titulo">Sequência atual</div>
+        <div class="nivel" id="nivel-conteudo"></div>
+    </div>
+
+    <!-- Espaço reservado para gamification futura (conquistas). Não implementado.
+    <div class="card" id="card-conquistas" hidden>
+        <div class="card-titulo">Conquistas</div>
+        <div id="conquistas-conteudo"></div>
+    </div>
+    -->
+
+    <!-- RESUMO: 3 anéis pequenos -->
     <div class="card">
         <div class="card-titulo">Resumo</div>
-        <div class="grelha-2">
-            <div class="caixa"><div class="caixa-valor" id="v-semana">—</div><div class="caixa-rotulo">dias treinados esta semana</div></div>
-            <div class="caixa"><div class="caixa-valor" id="v-mes">—</div><div class="caixa-rotulo">dias treinados este mês</div></div>
-            <div class="caixa"><div class="caixa-valor" id="v-seq">—</div><div class="caixa-rotulo">sequência atual (dias)</div></div>
-            <div class="caixa"><div class="caixa-valor" id="v-melhor">—</div><div class="caixa-rotulo">melhor sequência (dias)</div></div>
-        </div>
+        <div class="aneis-3" id="aneis-resumo"></div>
     </div>
 
     <!-- ÚLTIMO TREINO -->
-    <div class="card">
+    <div class="card compacto">
         <div class="card-titulo">Último treino</div>
         <p class="texto-suave" id="texto-ultimo">A carregar...</p>
     </div>
 
     <!-- SEMANAS -->
     <div class="card">
-        <div class="card-titulo">Dias treinados por semana</div>
-        <canvas id="grafico-semanas" height="170"></canvas>
-        <p class="nota-pequena">Últimas 8 semanas (a semana atual ainda está a decorrer).</p>
+        <div class="card-titulo">Últimas 8 semanas</div>
+        <div class="semanas" id="semanas"></div>
+        <p class="nota-pequena">Dias treinados por semana (de 7). A semana com contorno ainda está a decorrer.</p>
     </div>
 
     <!-- FASES DO CICLO (escondido em modo discreto) -->
     <div class="card" id="card-fases" hidden>
         <div class="card-titulo">Treinos por fase do ciclo</div>
-        <div id="fases-conteudo">
-            <canvas id="grafico-fases" height="170"></canvas>
-        </div>
+        <div id="fases-conteudo"></div>
         <p class="nota-pequena">As fases duram um número diferente de dias; isto mostra apenas em que fase calhou treinares. Estimativa com base nos teus registos. Não é um diagnóstico.</p>
     </div>
 
@@ -93,31 +123,16 @@
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="js/config.js"></script>
 <script src="js/ciclo-calc.js"></script>
 <script src="js/discreto.js"></script>
 <script src="js/treino-calc.js"></script>
+<script src="js/ui.js"></script>
 <script>
 
 async function verificarAuth() {
     const { data: { user } } = await db.auth.getUser();
     if (!user) window.location.href = 'login.html';
-}
-
-// ---- estilo dos gráficos: Inter, grelha discreta, barras a animar em ~600 ms ----
-Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-Chart.defaults.font.size = 12;
-Chart.defaults.color = '#475569';
-Chart.defaults.animation.duration = 600;
-Chart.defaults.animation.easing = 'easeOutQuart';
-
-// gradiente vertical #0D9488 -> #6366F1 (de baixo para cima), ajustado à área do gráfico
-function gradienteBarra(ctx, area, alfa) {
-    const g = ctx.createLinearGradient(0, area.bottom, 0, area.top);
-    g.addColorStop(0, 'rgba(13,148,136,' + alfa + ')');
-    g.addColorStop(1, 'rgba(99,102,241,' + alfa + ')');
-    return g;
 }
 
 let datas = [];
@@ -141,14 +156,49 @@ async function carregarSessoes() {
     datas = TreinoCalc.datasUnicas(error ? [] : (data || []));
 
     const segunda = TreinoCalc.inicioSemana(hoje);
-    document.getElementById('v-semana').textContent =
-        TreinoCalc.contarIntervalo(datas, segunda, TreinoCalc.somarDias(segunda, 6));
-    document.getElementById('v-mes').textContent = TreinoCalc.diasNoMes(datas, hoje);
-    document.getElementById('v-seq').textContent = TreinoCalc.sequenciaAtual(datas, hoje);
-    document.getElementById('v-melhor').textContent = TreinoCalc.melhorSequencia(datas);
+    const diasSemana = TreinoCalc.contarIntervalo(datas, segunda, TreinoCalc.somarDias(segunda, 6));
+    const diasMes = TreinoCalc.diasNoMes(datas, hoje);
+    const sequencia = TreinoCalc.sequenciaAtual(datas, hoje);
+    const melhor = TreinoCalc.melhorSequencia(datas);
 
+    desenharNivel(sequencia);
+    desenharResumo(diasSemana, diasMes, melhor, sequencia, parseInt(hoje.slice(8), 10));
     document.getElementById('texto-ultimo').textContent = textoUltimo(TreinoCalc.diasDesdeUltimo(datas, hoje));
     desenharSemanas(TreinoCalc.semanasRecentes(datas, hoje, 8));
+    UI.animarAneis();
+}
+
+// ---- 1. Nível: sequência atual face ao próximo marco ----
+function desenharNivel(sequencia) {
+    const n = TreinoCalc.nivelAtual(sequencia);
+    const centro = '<div class="nivel-num" id="v-seq">' + sequencia + '</div>' +
+        '<div class="nivel-de">' + (n.maximo ? 'dias' : 'de ' + n.marco) + '</div>';
+    const falta = n.marco - sequencia;
+    const frase = n.maximo
+        ? 'Marco máximo'
+        : (falta === 1 ? 'Falta 1 dia' : 'Faltam ' + falta + ' dias') + ' para o próximo marco';
+    const aria = 'Sequência atual: ' + sequencia + (n.maximo ? ' dias, marco máximo' : ' de ' + n.marco + ' dias');
+
+    document.getElementById('nivel-conteudo').innerHTML =
+        UI.anel({ pct: n.progresso * 100, tamanho: 120, traco: 9, centro: centro, rotulo: aria }) +
+        '<div style="min-width:0;"><div class="nivel-titulo">Nível ' + n.nivel + '</div>' +
+        '<div class="nivel-frase">' + frase + '</div></div>';
+}
+
+// ---- 2. Esta semana / Este mês / Recorde ----
+function desenharResumo(diasSemana, diasMes, melhor, sequencia, diaDoMes) {
+    function col(pct, valor, id, rotulo, aria) {
+        return '<div class="anel-col">' +
+            UI.anel({ pct: pct, tamanho: 64, traco: 10, rotulo: aria,
+                centro: '<span class="anel-num pequeno" id="' + id + '">' + valor + '</span>' }) +
+            '<div class="anel-col-rot">' + rotulo + '</div></div>';
+    }
+    // Recorde: anel cheio quando a sequência atual iguala a melhor
+    const pctRecorde = melhor > 0 ? Math.min(100, sequencia / melhor * 100) : 0;
+    document.getElementById('aneis-resumo').innerHTML =
+        col(diasSemana / 7 * 100, diasSemana, 'v-semana', 'Esta semana', diasSemana + ' de 7 dias esta semana') +
+        col(diasMes / diaDoMes * 100, diasMes, 'v-mes', 'Este mês', diasMes + ' de ' + diaDoMes + ' dias este mês') +
+        col(pctRecorde, melhor, 'v-melhor', 'Recorde', 'Melhor sequência: ' + melhor + ' dias');
 }
 
 // Texto neutro, sem culpa
@@ -159,42 +209,21 @@ function textoUltimo(dias) {
     return `Último treino registado na app: há ${dias} dias. Descansar também faz parte; voltas quando te souber bem.`;
 }
 
-function opcoesBarras(max) {
-    return {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: {
-            y: { beginAtZero: true, suggestedMax: max, ticks: { stepSize: 1, precision: 0 }, grid: { color: 'rgba(15,23,42,0.06)' }, border: { display: false } },
-            x: { grid: { display: false }, border: { display: false }, ticks: { maxRotation: 0, autoSkip: false } }
-        }
-    };
-}
-
+// ---- 4. Últimas 8 semanas: um anel por semana (dias/7) ----
 function desenharSemanas(semanas) {
-    const rotulos = semanas.map(s => {
+    document.getElementById('semanas').innerHTML = semanas.map((s, i) => {
         const p = s.inicio.split('-');
-        return p[2] + '/' + p[1];
-    });
-    new Chart(document.getElementById('grafico-semanas'), {
-        type: 'bar',
-        data: {
-            labels: rotulos,
-            datasets: [{
-                data: semanas.map(s => s.dias),
-                // semana atual (ainda a decorrer) a cheio; as anteriores um pouco mais suaves
-                backgroundColor: c => {
-                    if (!c.chart.chartArea) return 'rgba(13,148,136,0.6)';
-                    return gradienteBarra(c.chart.ctx, c.chart.chartArea, c.dataIndex === semanas.length - 1 ? 1 : 0.65);
-                },
-                borderRadius: 8,
-                borderSkipped: false
-            }]
-        },
-        options: opcoesBarras(7)
-    });
+        const atual = i === semanas.length - 1;
+        const data = p[2] + '/' + p[1];
+        return '<div class="sem-item' + (atual ? ' atual' : '') + '">' +
+            UI.anel({ pct: s.dias / 7 * 100, tamanho: 44, traco: 12,
+                rotulo: 'Semana de ' + data + ': ' + s.dias + ' de 7 dias' + (atual ? ' (ainda a decorrer)' : ''),
+                centro: '<span class="anel-num mini">' + s.dias + '</span>' }) +
+            '<div class="sem-data">' + data + '</div></div>';
+    }).join('');
 }
 
-// ---- treinos por fase do ciclo (nunca é carregado em modo discreto) ----
+// ---- 5. Treinos por fase do ciclo (nunca é carregado em modo discreto) ----
 async function carregarFases() {
     if (Discreto.ativo()) return;
     const card = document.getElementById('card-fases');
@@ -226,28 +255,29 @@ async function carregarFases() {
     });
 
     card.hidden = false;
+    const nomes = Object.keys(contagem);
+    const centro = '<div class="donut-total">' + total + '</div><div class="donut-rot">treinos</div>';
+    const aria = total
+        ? 'Treinos por fase: ' + nomes.map(n => n + ' ' + contagem[n]).join(', ')
+        : 'Sem treinos registados por fase';
+
+    const donut = UI.donut({
+        tamanho: 132, traco: 12, centro: centro, rotulo: aria,
+        segmentos: nomes.map(n => ({ valor: contagem[n], cor: CicloCalc.FASES_INFO[n].cor }))
+    });
+
     if (!total) {
         document.getElementById('fases-conteudo').innerHTML =
-            '<p class="texto-suave">Ainda não há dados suficientes para mostrar.</p>';
-        return;
+            '<div class="fases">' + donut +
+            '<p class="texto-suave" style="flex:1;">Ainda sem treinos nesta altura do ciclo. Quando treinares, vais ver aqui em que fase calhou.</p></div>';
+    } else {
+        document.getElementById('fases-conteudo').innerHTML =
+            '<div class="fases">' + donut + '<ul class="fases-legenda">' +
+            nomes.map(n => '<li><i style="background:' + CicloCalc.FASES_INFO[n].cor + ';"></i><span>' + n +
+                '</span><strong>' + contagem[n] + '</strong></li>').join('') +
+            '</ul></div>';
     }
-
-    const nomes = Object.keys(contagem);
-    new Chart(document.getElementById('grafico-fases'), {
-        type: 'bar',
-        data: {
-            labels: nomes,
-            datasets: [{
-                data: nomes.map(n => contagem[n]),
-                backgroundColor: c => c.chart.chartArea
-                    ? gradienteBarra(c.chart.ctx, c.chart.chartArea, 1)
-                    : 'rgba(13,148,136,0.8)',
-                borderRadius: 8,
-                borderSkipped: false
-            }]
-        },
-        options: opcoesBarras(1)
-    });
+    UI.animarAneis(document.getElementById('fases-conteudo'));
 }
 
 </script>

@@ -41,7 +41,35 @@
         circulo.style.opacity = p > 0 ? 1 : 0; // evita o ponto do linecap a 0 %
     }
 
-    // Anima todos os anéis ainda vazios dentro de raiz
+    // Donut segmentado (r=42, começa no topo). Cada segmento tem uma cor própria e
+    // arranca vazio; animarAneis() faz crescer todos até ao valor.
+    // opcoes: { segmentos: [{ valor, cor }], tamanho, traco, centro (html), rotulo (aria) }
+    // Sem valores (total 0) desenha só a pista cinzenta.
+    function donut(opcoes) {
+        const o = opcoes || {};
+        const t = o.tamanho || 132;
+        const w = o.traco || 12;
+        const segs = (o.segmentos || []).filter(function (s) { return s && s.valor > 0; });
+        const total = segs.reduce(function (a, s) { return a + s.valor; }, 0);
+        const folga = segs.length > 1 ? 2.5 : 0; // espaço entre segmentos
+        let acumulado = 0;
+        const circulos = segs.map(function (s) {
+            const comp = s.valor / total * CIRCUNFERENCIA;
+            const visivel = Math.max(0.5, comp - folga);
+            const c = '<circle class="donut-seg" data-len="' + visivel.toFixed(2) + '" cx="50" cy="50" r="42"' +
+                ' stroke-width="' + w + '" stroke="' + s.cor + '" transform="rotate(-90 50 50)"' +
+                ' stroke-dasharray="0 ' + CIRCUNFERENCIA + '" stroke-dashoffset="' + (-(acumulado + folga / 2)).toFixed(2) + '"/>';
+            acumulado += comp;
+            return c;
+        }).join('');
+        const aria = o.rotulo ? ' role="img" aria-label="' + o.rotulo + '"' : ' aria-hidden="true"';
+        return '<div class="anel" style="width:' + t + 'px;height:' + t + 'px"' + aria + '>' +
+            '<svg viewBox="0 0 100 100" fill="none">' +
+            '<circle class="anel-pista" cx="50" cy="50" r="42" stroke-width="' + w + '"/>' + circulos +
+            '</svg><div class="anel-centro">' + (o.centro || '') + '</div></div>';
+    }
+
+    // Anima todos os anéis e donuts ainda vazios dentro de raiz
     function animarAneis(raiz) {
         const r = raiz || document;
         requestAnimationFrame(function () {
@@ -49,9 +77,12 @@
                 r.querySelectorAll('.anel-traco').forEach(function (c) {
                     definirAnel(c, c.getAttribute('data-pct'));
                 });
+                r.querySelectorAll('.donut-seg').forEach(function (c) {
+                    c.style.strokeDasharray = c.getAttribute('data-len') + ' ' + CIRCUNFERENCIA;
+                });
             });
         });
     }
 
-    root.UI = { anel: anel, definirAnel: definirAnel, animarAneis: animarAneis };
+    root.UI = { anel: anel, donut: donut, definirAnel: definirAnel, animarAneis: animarAneis };
 })(window);

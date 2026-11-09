@@ -81,7 +81,24 @@
         return datas.filter(d => d.slice(0, 7) === prefixo && d <= hoje).length;
     }
 
+    // Marcos da sequência. O objetivo é sempre o primeiro marco MAIOR que a sequência.
+    const MARCOS = [2, 5, 15, 30, 50, 100, 200, 365];
+
+    // -> { nivel (1-based, posição do objetivo), marco (objetivo), progresso (0..1), maximo }
+    // Sequência >= 365: anel cheio, maximo = true.
+    function nivelAtual(sequencia) {
+        const seq = Math.max(0, Math.floor(Number(sequencia) || 0));
+        for (let i = 0; i < MARCOS.length; i++) {
+            if (MARCOS[i] > seq) {
+                return { nivel: i + 1, marco: MARCOS[i], progresso: seq / MARCOS[i], maximo: false };
+            }
+        }
+        return { nivel: MARCOS.length, marco: MARCOS[MARCOS.length - 1], progresso: 1, maximo: true };
+    }
+
     return {
+        MARCOS: MARCOS,
+        nivelAtual: nivelAtual,
         inicioSemana: inicioSemana,
         datasUnicas: datasUnicas,
         contarIntervalo: contarIntervalo,

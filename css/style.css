@@ -207,8 +207,10 @@ button { color: inherit; -webkit-tap-highlight-color: transparent; }
     text-align: center;
     line-height: 1.1;
 }
+.donut-seg { transition: stroke-dasharray 0.6s ease-out; }
 .anel-num { font-family: var(--fonte-t); font-size: 28px; font-weight: 700; color: var(--tx); }
 .anel-num.pequeno { font-size: 18px; }
+.anel-num.mini { font-size: 14px; }
 .anel-rot { font-size: 11px; color: var(--tx2); font-weight: 500; max-width: 68px; margin-top: 2px; }
 
 /* ---- HERO DO CICLO ---- */
