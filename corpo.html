@@ -57,8 +57,15 @@
         .metrica-box-unidade {
             font-size: 0.7rem;
             color: var(--cinza-meio);
-            margin-left: 2px;
+            margin-left: 0.3em;
         }
+
+        .form-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 10px;
+        }
+        .form-2col .form-grupo label { font-size: 0.7rem; }
 
         .metrica-box-label {
             font-size: 0.72rem;
@@ -137,6 +144,8 @@
 
     <!-- TAB RESUMO -->
     <div class="tab-panel active" id="tab-resumo">
+        <button class="btn btn-primario" style="margin-bottom:12px;" onclick="abrirRegisto()">+ Registo</button>
+        <div id="ultima-pesagem" style="font-size:0.82rem; color:var(--cinza-meio); margin:0 2px 12px;" hidden></div>
         <div id="resumo-content">
             <div class="card" style="text-align:center; padding:32px;">
                 <div style="font-size:2rem; margin-bottom:8px;">⚖️</div>
@@ -222,6 +231,43 @@
 
 </div>
 
+<!-- FORMULÁRIO — NOVO REGISTO -->
+<div class="modal-overlay" id="modal-registo">
+    <div class="modal">
+        <div class="modal-titulo">Novo registo</div>
+
+        <div class="form-grupo">
+            <label>Data</label>
+            <input type="date" id="r-data">
+        </div>
+
+        <div class="form-grupo">
+            <label>Peso (kg) *</label>
+            <input type="text" inputmode="decimal" id="r-peso" placeholder="ex: 68,5" autocomplete="off">
+        </div>
+
+        <div style="font-size:0.75rem; color:var(--cinza-meio); margin:4px 0 10px;">Opcional</div>
+        <div class="form-2col">
+            <div class="form-grupo"><label>IMC</label><input type="text" inputmode="decimal" id="r-imc" autocomplete="off"></div>
+            <div class="form-grupo"><label>Gordura corporal (%)</label><input type="text" inputmode="decimal" id="r-gordura" autocomplete="off"></div>
+            <div class="form-grupo"><label>Gordura visceral</label><input type="text" inputmode="numeric" id="r-visceral" autocomplete="off"></div>
+            <div class="form-grupo"><label>Gordura subcutânea (%)</label><input type="text" inputmode="decimal" id="r-subcutanea" autocomplete="off"></div>
+            <div class="form-grupo"><label>Massa muscular (kg)</label><input type="text" inputmode="decimal" id="r-muscular" autocomplete="off"></div>
+            <div class="form-grupo"><label>Músculo esquelético (%)</label><input type="text" inputmode="decimal" id="r-esqueletico" autocomplete="off"></div>
+            <div class="form-grupo"><label>Água corporal (%)</label><input type="text" inputmode="decimal" id="r-agua" autocomplete="off"></div>
+            <div class="form-grupo"><label>Idade metabólica</label><input type="text" inputmode="numeric" id="r-idade-met" autocomplete="off"></div>
+            <div class="form-grupo"><label>Massa óssea (kg)</label><input type="text" inputmode="decimal" id="r-ossea" autocomplete="off"></div>
+            <div class="form-grupo"><label>TMB (kcal)</label><input type="text" inputmode="numeric" id="r-tmb" autocomplete="off"></div>
+            <div class="form-grupo"><label>Proteínas (%)</label><input type="text" inputmode="decimal" id="r-proteinas" autocomplete="off"></div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:4px;">
+            <button class="btn btn-secundario" style="flex:1;" onclick="fecharRegisto()">Cancelar</button>
+            <button class="btn btn-primario" style="flex:2;" onclick="guardarRegisto()">Guardar</button>
+        </div>
+    </div>
+</div>
+
 <div id="toast"></div>
 
 <nav class="nav-bottom">
@@ -273,6 +319,32 @@ function mostrarToast(msg) {
     setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+// ---- FORMATAÇÃO (vírgula decimal, pt-PT) ----
+function fmt(v, casas) {
+    if (v === null || v === undefined || v === '') return '—';
+    const n = Number(v);
+    if (!isFinite(n)) return '—';
+    return n.toLocaleString('pt-PT', {
+        minimumFractionDigits: casas, maximumFractionDigits: casas, useGrouping: false
+    });
+}
+
+function fmtSinal(n, casas) {
+    return (n > 0 ? '+' : '') + fmt(n, casas);
+}
+
+function hojeLocal() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+function diasDesde(dataStr) {
+    const a = dataStr.split('-').map(Number);
+    const b = hojeLocal().split('-').map(Number);
+    return Math.round((Date.UTC(b[0], b[1] - 1, b[2]) - Date.UTC(a[0], a[1] - 1, a[2])) / 86400000);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     await carregarMetricas();
 });
@@ -298,12 +370,21 @@ async function carregarMetricas() {
     dadosMetricas = data || [];
     renderResumo();
     renderHistorico();
+    if (document.getElementById('tab-evolucao').classList.contains('active')) renderGraficoPeso();
 }
 
 // ---- RESUMO ----
 function renderResumo() {
     const el = document.getElementById('resumo-content');
     if (dadosMetricas.length === 0) return;
+
+    // Linha neutra sobre a última pesagem
+    const dias = diasDesde(dadosMetricas[0].data);
+    const linha = document.getElementById('ultima-pesagem');
+    linha.textContent = dias <= 0 ? 'Última pesagem: hoje.'
+        : dias === 1 ? 'Última pesagem: ontem.'
+        : 'Última pesagem há ' + dias + ' dias.';
+    linha.hidden = false;
 
     const u = dadosMetricas[0];
     const ant = dadosMetricas[1];
@@ -316,7 +397,7 @@ function renderResumo() {
         const positivo = parseFloat(d) > 0;
         const bom = inverso ? !positivo : positivo;
         const cls = bom ? 'diff-neg' : 'diff-pos';
-        return `<span class="evolucao-diff ${cls}">${positivo ? '+' : ''}${d}</span>`;
+        return `<span class="evolucao-diff ${cls}">${fmtSinal(parseFloat(d), 1)}</span>`;
     }
 
     el.innerHTML = `
@@ -325,50 +406,131 @@ function renderResumo() {
 
             <div class="metrica-grid">
                 <div class="metrica-box destaque">
-                    <div class="metrica-box-valor">${u.peso_kg ?? '—'}<span class="metrica-box-unidade">kg</span></div>
+                    <div class="metrica-box-valor">${fmt(u.peso_kg, 1)}<span class="metrica-box-unidade">kg</span></div>
                     <div class="metrica-box-label">⚖️ Peso ${diff('peso_kg', false)}</div>
                 </div>
                 <div class="metrica-box">
-                    <div class="metrica-box-valor">${u.gordura_corporal ?? '—'}<span class="metrica-box-unidade">%</span></div>
+                    <div class="metrica-box-valor">${fmt(u.gordura_corporal, 1)}<span class="metrica-box-unidade">%</span></div>
                     <div class="metrica-box-label">🔥 Gordura corporal ${diff('gordura_corporal', false)}</div>
                 </div>
                 <div class="metrica-box">
-                    <div class="metrica-box-valor">${u.massa_muscular ?? '—'}<span class="metrica-box-unidade">kg</span></div>
+                    <div class="metrica-box-valor">${fmt(u.massa_muscular, 1)}<span class="metrica-box-unidade">kg</span></div>
                     <div class="metrica-box-label">💪 Massa muscular ${diff('massa_muscular', true)}</div>
                 </div>
                 <div class="metrica-box">
-                    <div class="metrica-box-valor">${u.gordura_visceral ?? '—'}</div>
+                    <div class="metrica-box-valor">${fmt(u.gordura_visceral, 0)}</div>
                     <div class="metrica-box-label">⚠️ Gordura visceral ${diff('gordura_visceral', false)}</div>
                 </div>
                 <div class="metrica-box">
-                    <div class="metrica-box-valor">${u.agua_corporal ?? '—'}<span class="metrica-box-unidade">%</span></div>
+                    <div class="metrica-box-valor">${fmt(u.agua_corporal, 1)}<span class="metrica-box-unidade">%</span></div>
                     <div class="metrica-box-label">💧 Água corporal ${diff('agua_corporal', true)}</div>
                 </div>
                 <div class="metrica-box">
-                    <div class="metrica-box-valor">${u.imc ?? '—'}</div>
+                    <div class="metrica-box-valor">${fmt(u.imc, 1)}</div>
                     <div class="metrica-box-label">📐 IMC ${diff('imc', false)}</div>
                 </div>
                 <div class="metrica-box">
-                    <div class="metrica-box-valor">${u.idade_metabolica ?? '—'}<span class="metrica-box-unidade">anos</span></div>
+                    <div class="metrica-box-valor">${fmt(u.idade_metabolica, 0)}<span class="metrica-box-unidade">anos</span></div>
                     <div class="metrica-box-label">⚡ Idade metabólica ${diff('idade_metabolica', false)}</div>
                 </div>
                 <div class="metrica-box">
-                    <div class="metrica-box-valor">${u.massa_ossea ?? '—'}<span class="metrica-box-unidade">kg</span></div>
+                    <div class="metrica-box-valor">${fmt(u.massa_ossea, 1)}<span class="metrica-box-unidade">kg</span></div>
                     <div class="metrica-box-label">🦴 Massa óssea ${diff('massa_ossea', true)}</div>
                 </div>
                 ${u.tmb ? `
                 <div class="metrica-box">
-                    <div class="metrica-box-valor">${u.tmb}<span class="metrica-box-unidade">kcal</span></div>
+                    <div class="metrica-box-valor">${fmt(u.tmb, 0)}<span class="metrica-box-unidade">kcal</span></div>
                     <div class="metrica-box-label">🔥 TMB</div>
                 </div>` : ''}
                 ${u.proteinas ? `
                 <div class="metrica-box">
-                    <div class="metrica-box-valor">${u.proteinas}<span class="metrica-box-unidade">%</span></div>
+                    <div class="metrica-box-valor">${fmt(u.proteinas, 1)}<span class="metrica-box-unidade">%</span></div>
                     <div class="metrica-box-label">🥩 Proteínas</div>
+                </div>` : ''}
+                ${u.gordura_subcutanea ? `
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${fmt(u.gordura_subcutanea, 1)}<span class="metrica-box-unidade">%</span></div>
+                    <div class="metrica-box-label">🔥 Gordura subcutânea</div>
+                </div>` : ''}
+                ${u.musculo_esqueletico ? `
+                <div class="metrica-box">
+                    <div class="metrica-box-valor">${fmt(u.musculo_esqueletico, 1)}<span class="metrica-box-unidade">%</span></div>
+                    <div class="metrica-box-label">💪 Músculo esquelético</div>
                 </div>` : ''}
             </div>
         </div>`;
 }
+
+// ---- NOVO REGISTO MANUAL ----
+// Mesma tabela (metricas_corporais) e mesmos nomes de colunas da importação.
+const CAMPOS_REGISTO = [
+    { id: 'r-imc',        coluna: 'imc',                 inteiro: false },
+    { id: 'r-gordura',    coluna: 'gordura_corporal',    inteiro: false },
+    { id: 'r-visceral',   coluna: 'gordura_visceral',    inteiro: true  },
+    { id: 'r-subcutanea', coluna: 'gordura_subcutanea',  inteiro: false },
+    { id: 'r-muscular',   coluna: 'massa_muscular',      inteiro: false },
+    { id: 'r-esqueletico',coluna: 'musculo_esqueletico', inteiro: false },
+    { id: 'r-agua',       coluna: 'agua_corporal',       inteiro: false },
+    { id: 'r-idade-met',  coluna: 'idade_metabolica',    inteiro: true  },
+    { id: 'r-ossea',      coluna: 'massa_ossea',         inteiro: false },
+    { id: 'r-tmb',        coluna: 'tmb',                 inteiro: true  },
+    { id: 'r-proteinas',  coluna: 'proteinas',           inteiro: false }
+];
+
+// aceita vírgula ou ponto decimal; devolve null se vazio ou inválido
+function lerNumero(texto) {
+    const t = String(texto || '').trim().replace(',', '.');
+    if (!t) return null;
+    const n = Number(t);
+    return isFinite(n) ? n : NaN;
+}
+
+function abrirRegisto() {
+    document.getElementById('r-data').value = hojeLocal();
+    document.getElementById('r-peso').value = '';
+    CAMPOS_REGISTO.forEach(c => { document.getElementById(c.id).value = ''; });
+    document.getElementById('modal-registo').classList.add('open');
+}
+
+function fecharRegisto() {
+    document.getElementById('modal-registo').classList.remove('open');
+}
+
+async function guardarRegisto() {
+    const data = document.getElementById('r-data').value;
+    if (!data) { mostrarToast('Escolhe uma data'); return; }
+    if (data > hojeLocal()) { mostrarToast('A data não pode ser futura'); return; }
+
+    const peso = lerNumero(document.getElementById('r-peso').value);
+    if (peso === null || isNaN(peso) || peso <= 0) { mostrarToast('Indica o peso (obrigatório)'); return; }
+
+    // só os campos preenchidos: num registo existente nesse dia não apaga valores já guardados
+    const payload = { data: data, peso_kg: peso };
+    for (const c of CAMPOS_REGISTO) {
+        const v = lerNumero(document.getElementById(c.id).value);
+        if (v === null) continue;
+        if (isNaN(v)) { mostrarToast('Há um valor inválido'); return; }
+        payload[c.coluna] = c.inteiro ? Math.round(v) : v;
+    }
+
+    const { error } = await db
+        .from('metricas_corporais')
+        .upsert(payload, { onConflict: 'data' });
+
+    if (error) {
+        mostrarToast('Erro ao guardar 😕');
+        console.error(error);
+        return;
+    }
+
+    fecharRegisto();
+    mostrarToast('Registo guardado ✓');
+    await carregarMetricas();
+}
+
+document.getElementById('modal-registo').addEventListener('click', e => {
+    if (e.target.id === 'modal-registo') fecharRegisto();
+});
 
 // ---- IMPORTAR MD ----
 function lerFicheiroMetricas(input) {
@@ -418,24 +580,24 @@ function mostrarPreview() {
     const data = new Date(d.data + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const campos = [
-        ['⚖️ Peso', d.peso_kg, 'kg'],
-        ['📐 IMC', d.imc, ''],
-        ['🔥 Gordura corporal', d.gordura_corporal, '%'],
-        ['⚠️ Gordura visceral', d.gordura_visceral, ''],
-        ['💪 Massa muscular', d.massa_muscular, 'kg'],
-        ['💧 Água corporal', d.agua_corporal, '%'],
-        ['⚡ Idade metabólica', d.idade_metabolica, 'anos'],
-        ['🦴 Massa óssea', d.massa_ossea, 'kg'],
-        ['🔥 TMB', d.tmb, 'kcal'],
-        ['🥩 Proteínas', d.proteinas, '%'],
+        ['⚖️ Peso', d.peso_kg, 'kg', 1],
+        ['📐 IMC', d.imc, '', 1],
+        ['🔥 Gordura corporal', d.gordura_corporal, '%', 1],
+        ['⚠️ Gordura visceral', d.gordura_visceral, '', 0],
+        ['💪 Massa muscular', d.massa_muscular, 'kg', 1],
+        ['💧 Água corporal', d.agua_corporal, '%', 1],
+        ['⚡ Idade metabólica', d.idade_metabolica, 'anos', 0],
+        ['🦴 Massa óssea', d.massa_ossea, 'kg', 1],
+        ['🔥 TMB', d.tmb, 'kcal', 0],
+        ['🥩 Proteínas', d.proteinas, '%', 1],
     ].filter(([,v]) => v !== null);
 
     document.getElementById('preview-conteudo').innerHTML = `
         <div style="font-weight:600; margin-bottom:10px; color:var(--azul-escuro);">${data}</div>
-        ${campos.map(([label, val, un]) => `
+        ${campos.map(([label, val, un, casas]) => `
             <div style="display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--cinza-claro); font-size:0.85rem;">
                 <span>${label}</span>
-                <span style="font-family:'DM Mono',monospace; font-weight:600;">${val}${un ? ' ' + un : ''}</span>
+                <span style="font-family:'DM Mono',monospace; font-weight:600;">${fmt(val, casas)}${un ? ' ' + un : ''}</span>
             </div>`).join('')}`;
 
     document.getElementById('preview-importacao').style.display = 'block';
@@ -495,9 +657,21 @@ function renderGraficoPeso() {
         },
         options: {
             responsive: true,
-            plugins: { legend: { display: false } },
+            locale: 'pt-PT',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: c => 'Peso: ' + fmt(c.parsed.y, 1) + ' kg'
+                    }
+                }
+            },
             scales: {
-                y: { beginAtZero: false, grid: { color: '#F3F4F6' } },
+                y: {
+                    beginAtZero: false,
+                    grid: { color: '#F3F4F6' },
+                    ticks: { callback: v => fmt(v, 1) }
+                },
                 x: { grid: { display: false } }
             }
         }
@@ -519,6 +693,7 @@ function renderHistorico() {
         idade_metabolica: 'anos', massa_ossea: 'kg', tmb: 'kcal'
     };
     const un = unidades[campo] || '';
+    const casasCampo = ['gordura_visceral', 'idade_metabolica', 'tmb'].includes(campo) ? 0 : 1;
 
     // Para o peso, inverter lógica (menos é melhor)
     const menosEMelhor = ['peso_kg', 'gordura_corporal', 'gordura_visceral', 'imc', 'idade_metabolica'];
@@ -531,7 +706,7 @@ function renderHistorico() {
         let diffEl = '';
         if (prox && prox[campo] && val) {
             const diff = (val - prox[campo]);
-            const diffStr = (diff > 0 ? '+' : '') + diff.toFixed(1);
+            const diffStr = fmtSinal(parseFloat(diff.toFixed(1)), 1);
             const bom = menosEMelhor.includes(campo) ? diff < 0 : diff > 0;
             const cls = diff === 0 ? 'diff-zero' : bom ? 'diff-neg' : 'diff-pos';
             diffEl = `<span class="evolucao-diff ${cls}">${diffStr}</span>`;
@@ -541,7 +716,7 @@ function renderHistorico() {
             <div class="evolucao-item">
                 <div class="evolucao-data">${data}</div>
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <span class="evolucao-valor">${val ?? '—'}${val ? ' ' + un : ''}</span>
+                    <span class="evolucao-valor">${fmt(val, casasCampo)}${val ? ' ' + un : ''}</span>
                     ${diffEl}
                 </div>
             </div>`;
