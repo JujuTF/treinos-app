@@ -27,13 +27,13 @@
     const AVISO_ESTIMATIVA = 'Estimativa com base nos teus registos. Não é um diagnóstico.';
 
     const FASES_INFO = {
-        'Menstrual': { emoji: '🔴', cor: '#EF4444',
+        'Menstrual': { emoji: '🔴', cor: '#F43F5E', clara: '#FB7185', rgb: '244,63,94',
             desc: 'Período. Prioriza descanso e mobilidade suave.', treino: '🟢 Mobilidade' },
-        'Folicular': { emoji: '🌱', cor: '#22C55E',
+        'Folicular': { emoji: '🌱', cor: '#10B981', clara: '#34D399', rgb: '16,185,129',
             desc: 'Energia crescente. Boa fase para intensidade.', treino: '🔴 Treino Completo' },
-        'Janela fértil': { emoji: '✨', cor: '#EAB308',
+        'Janela fértil': { emoji: '✨', cor: '#F59E0B', clara: '#FBBF24', rgb: '245,158,11',
             desc: 'Dias com maior probabilidade de conceção.', treino: '🔴 Treino Completo' },
-        'Lútea': { emoji: '🌙', cor: '#A855F7',
+        'Lútea': { emoji: '🌙', cor: '#8B5CF6', clara: '#A78BFA', rgb: '139,92,246',
             desc: 'Energia variável. Treinos moderados.', treino: '🔵 Força Curta' }
     };
 

@@ -22,8 +22,11 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.75);
-            border: 1px solid var(--linha);
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 6px 16px rgba(30, 41, 90, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
             border-radius: 50%;
             font-size: 22px;
             line-height: 1;
@@ -41,9 +44,11 @@
         .cal-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
-            gap: 2px 0;
+            gap: 4px 0;
             width: 100%;
         }
+        .cal-grid.fade { animation: cal-fade 150ms ease-out both; }
+        @keyframes cal-fade { from { opacity: 0; } to { opacity: 1; } }
         .cal-header-dia {
             text-align: center;
             font-size: 11px;
@@ -52,9 +57,11 @@
             text-transform: uppercase;
             padding: 4px 0;
         }
+        /* cada dia e cada faixa têm posição explícita na grelha (linha/coluna inline) */
         .cal-dia {
-            width: 100%;
-            aspect-ratio: 1;
+            width: 40px;
+            height: 40px;
+            justify-self: center;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -63,32 +70,53 @@
             font-weight: 500;
             cursor: pointer;
             position: relative;
+            z-index: 1;
             transition: background 0.15s;
             color: var(--tx);
             min-width: 0;
         }
         .cal-dia:hover { background: rgba(15, 23, 42, 0.06); }
-        .cal-dia.vazio { cursor: default; }
-        .cal-dia.vazio:hover { background: none; }
-        .cal-dia.periodo { background: #FECDD3; color: #9F1239; font-weight: 600; }
-        .cal-dia.periodo.inicio { background: #E11D48; color: #fff; }
-        .cal-dia.periodo.fim { background: #FDA4AF; color: #881337; }
-        .cal-dia.janela   { background: #FEF3C7; color: #854D0E; }
-        .cal-dia.ovulacao { background: #F59E0B; color: #451A03; font-weight: 700; }
-        .cal-dia.previsao { border: 2px dashed #FB7185; color: #BE123C; }
-        .cal-dia.hoje {
-            box-shadow: inset 0 0 0 2px var(--teal);
+        .cal-dia.periodo {
+            background: linear-gradient(135deg, #FB7185, #F43F5E);
+            color: #fff;
             font-weight: 700;
-            color: var(--teal-d);
         }
-        .cal-dia.sel { outline: 3px solid var(--ind-d); outline-offset: -3px; }
+        .cal-dia.ovulacao {
+            background: linear-gradient(135deg, #F59E0B, #F97316);
+            color: #fff;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.35);
+        }
+        .cal-dia.previsao { border: 2px dashed #F43F5E; }
+        .cal-dia.hoje { box-shadow: inset 0 0 0 2px #4F46E5; font-weight: 700; }
+        .cal-dia.periodo.hoje, .cal-dia.ovulacao.hoje {
+            box-shadow: inset 0 0 0 2px #4F46E5, inset 0 0 0 4px #fff;
+        }
+        .cal-dia.sel { background: var(--grad); color: #fff; font-weight: 700; }
+        .cal-dia.sel.hoje { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #4F46E5; }
         .cal-dia.relacao::after {
-            content: '♥';
+            content: '';
             position: absolute;
-            right: 6px; bottom: 3px;
-            font-size: 9px;
-            line-height: 1;
-            color: #BE185D;
+            left: 50%; bottom: 4px;
+            width: 5px; height: 5px;
+            margin-left: -2.5px;
+            border-radius: 50%;
+            background: #F43F5E;
+        }
+        .cal-dia.periodo.relacao::after,
+        .cal-dia.ovulacao.relacao::after,
+        .cal-dia.sel.relacao::after { background: #fff; }
+
+        /* janela fértil: faixa contínua por troço (dentro da mesma semana) */
+        .cal-faixa {
+            align-self: center;
+            height: 36px;
+            margin: 0 2px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(253, 230, 138, 0.55), rgba(153, 246, 228, 0.55));
+            position: relative;
+            z-index: 0;
+            pointer-events: none;
         }
 
         .aviso-estimativa { font-size: 12px; color: var(--tx2); margin: 0 4px 14px; }
@@ -97,9 +125,14 @@
             background: #FEF3C7; color: #92400E; font-size: 13px;
         }
 
-        .cal-legenda { margin-top: 12px; display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 12px; color: var(--tx2); }
-        .cal-legenda > span { display: inline-flex; align-items: center; gap: 6px; }
-        .leg-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .cal-legenda { margin-top: 14px; display: flex; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--tx2); }
+        .cal-legenda > span {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 10px; border-radius: 999px;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid var(--linha);
+        }
+        .leg-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
         /* ---- POSIÇÃO NO CICLO ---- */
         .timeline-wrap { position: relative; padding: 8px 0; }
@@ -114,14 +147,21 @@
             border: 2px solid transparent;
             border-radius: 999px;
             background-clip: padding-box;
-            opacity: 0.6;
         }
         .timeline-marcador {
             position: absolute;
-            top: 2px;
-            width: 6px;
-            height: 36px;
+            top: 7px;
+            min-width: 28px;
+            height: 22px;
+            padding: 0 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             background: var(--tx);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
             border: 2px solid #fff;
             border-radius: 999px;
             box-shadow: 0 2px 8px rgba(15, 23, 42, 0.3);
@@ -143,23 +183,59 @@
             to   { clip-path: inset(0 0 0 0 round 999px); }
         }
 
-        .fase-legenda { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; }
-        .fase-leg-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--tx2); }
+        .fase-legenda { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .fase-leg-item {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 4px 10px; border-radius: 999px;
+            font-size: 12px; color: var(--tx2);
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid var(--linha);
+        }
         .fase-leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 
         /* ---- PREVISÃO ---- */
         .previsao-titulo { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--tx2); margin-bottom: 8px; }
         .previsao-data { font-family: var(--fonte-t); font-size: 30px; font-weight: 700; letter-spacing: -0.02em; color: var(--tx); line-height: 1.1; }
         .previsao-dias { font-size: 14px; color: var(--tx2); margin-top: 6px; }
-        .previsao-janela { margin-top: 14px; padding: 12px 14px; border-radius: 20px; background: rgba(254, 243, 199, 0.7); color: #854D0E; font-size: 14px; }
-        .previsao-janela small { display: block; margin-top: 2px; font-size: 13px; }
+        .previsao-janela { margin-top: 14px; padding: 12px 14px; border-radius: 20px; background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.30); color: var(--tx); font-size: 14px; }
+        .previsao-janela small { display: block; margin-top: 2px; font-size: 13px; color: #475569; }
 
         /* ---- FASE ATUAL ---- */
+        .fase-card {
+            background:
+                radial-gradient(240px 170px at 100% 0%, rgba(var(--fc-rgb), 0.14), rgba(var(--fc-rgb), 0) 70%),
+                rgba(255, 255, 255, 0.62);
+        }
         .fase-topo { display: flex; align-items: center; gap: 14px; }
-        .fase-bola { width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; opacity: 0.85; }
+        .fase-bola {
+            width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+            background: linear-gradient(135deg, var(--fc), var(--fc-clara));
+            box-shadow: 0 0 0 6px rgba(var(--fc-rgb), 0.16), 0 6px 16px rgba(var(--fc-rgb), 0.35);
+            margin: 4px;
+        }
         .fase-nome { font-family: var(--fonte-t); font-weight: 700; font-size: 22px; color: var(--tx); line-height: 1.1; }
         .fase-meta { font-size: 13px; color: var(--tx2); margin-top: 3px; }
-        .fase-estado { margin-top: 14px; background: rgba(254, 243, 199, 0.7); border-radius: 16px; padding: 10px 14px; font-size: 13px; color: #854D0E; font-weight: 600; }
+        .fase-estado {
+            display: inline-block; margin-top: 14px; padding: 7px 14px; border-radius: 999px;
+            background: rgba(var(--fc-rgb), 0.14); border: 1px solid rgba(var(--fc-rgb), 0.30);
+            font-size: 13px; color: var(--tx); font-weight: 600;
+        }
+
+        /* ---- O QUE ESPERAR ---- */
+        .espera {
+            margin-top: 16px; padding: 16px; border-radius: 20px;
+            background: rgba(255, 255, 255, 0.72);
+            border: 1px solid rgba(255, 255, 255, 0.9);
+            box-shadow: 0 6px 18px rgba(30, 41, 90, 0.06);
+        }
+        .espera-titulo { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tx2); margin-bottom: 12px; }
+        .espera-sub { font-size: 12px; font-weight: 700; color: var(--tx); margin-bottom: 8px; }
+        .espera-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+        .espera-chip {
+            padding: 6px 12px; border-radius: 999px; font-size: 13px; color: var(--tx); line-height: 1.3;
+            background: rgba(var(--fc-rgb), 0.14); border: 1px solid rgba(var(--fc-rgb), 0.30);
+        }
+        .espera-texto { margin: 0; font-size: 14px; line-height: 1.5; color: #475569; }
 
         /* ---- REGISTOS ---- */
         .registo-rapido { display: flex; gap: 8px; }
@@ -252,17 +328,17 @@
     <!-- CALENDÁRIO -->
     <div class="card">
         <div class="cal-nav">
-            <button onclick="mudarMes(-1)">‹</button>
+            <button onclick="mudarMes(-1)" aria-label="Mês anterior">‹</button>
             <span class="cal-mes-label" id="cal-titulo"></span>
-            <button onclick="mudarMes(1)">›</button>
+            <button onclick="mudarMes(1)" aria-label="Mês seguinte">›</button>
         </div>
         <div class="cal-wrap"><div class="cal-grid" id="cal-grid"></div></div>
         <div class="cal-legenda">
-            <span><i class="leg-dot" style="background:#E11D48;"></i> Período</span>
-            <span class="leg-relacao"><span style="color:#BE185D;">♥</span> Relações</span>
-            <span class="leg-estimativa"><i class="leg-dot" style="border:2px dashed #FB7185;"></i> Previsão</span>
-            <span class="leg-estimativa"><i class="leg-dot" style="background:#FEF3C7;box-shadow:inset 0 0 0 1px #F59E0B;"></i> Janela fértil</span>
-            <span class="leg-estimativa"><i class="leg-dot" style="background:#F59E0B;"></i> Ovulação estimada</span>
+            <span><i class="leg-dot" style="background:linear-gradient(135deg,#FB7185,#F43F5E);"></i> Período</span>
+            <span class="leg-relacao"><i class="leg-dot" style="background:#F43F5E;"></i> Relações</span>
+            <span class="leg-estimativa"><i class="leg-dot" style="border:2px dashed #F43F5E;"></i> Previsão</span>
+            <span class="leg-estimativa"><i class="leg-dot" style="background:linear-gradient(90deg,#FDE68A,#99F6E4);"></i> Janela fértil</span>
+            <span class="leg-estimativa"><i class="leg-dot" style="background:linear-gradient(135deg,#F59E0B,#F97316);"></i> Ovulação estimada</span>
         </div>
     </div>
 
@@ -524,6 +600,8 @@ function renderPrevisao() {
 function renderFaseAtual() {
     const el = document.getElementById('fase-atual-wrap');
     const f = CicloCalc.faseAtual(ciclos, hoje());
+    el.className = 'card';
+    el.removeAttribute('style');
 
     const gr = gravidezAtiva();
     if (gr) {
@@ -560,51 +638,48 @@ function renderFaseAtual() {
     const info = CicloCalc.FASES_INFO[f.nome];
     const estadoJanela = CicloCalc.textoJanela(f);
 
+    el.className = 'card fase-card';
+    el.style.cssText = `--fc:${info.cor}; --fc-clara:${info.clara}; --fc-rgb:${info.rgb};`;
+
     el.innerHTML = `
         <div class="card-titulo">Fase atual</div>
         <div class="fase-topo">
-            <span class="fase-bola" style="background:${info.cor};"></span>
+            <span class="fase-bola"></span>
             <div style="flex:1; min-width:0;">
                 <div class="fase-nome">${f.nome}</div>
                 <div class="fase-meta">Dia ${f.dia} do ciclo</div>
                 <div class="fase-meta">${info.desc}</div>
             </div>
         </div>
-        <div class="fase-estado">
-            ${estadoJanela ? estadoJanela + ' · ' : ''}${CicloCalc.textoMenstruacao(f)}
-        </div>
+        ${estadoJanela ? `<div class="fase-estado">${estadoJanela}</div>` : ''}
         ${renderDicasFase(f.nome, f.dia)}`;
 }
 
 function renderDicasFase(nomeF, diasCiclo) {
     var DICAS = {
-        'Menstrual': { cor:'#FEE2E2', ct:'#991B1B',
+        'Menstrual': {
             nut:['Aumenta ferro: espinafres, lentilhas','Magn\u00e9sio: nozes, chocolate 70%','Hidrata\u00e7\u00e3o extra'],
             sens:'Algumas pessoas sentem menos energia nos primeiros dias, cansaço, sensibilidade mamária ou mais frio. Se não sentires nada disto, também é normal.' },
-        'Folicular': { cor:'#DCFCE7', ct:'#166534',
+        'Folicular': {
             nut:['Prote\u00edna para ganho muscular','Hidratos complexos para energia','Creatina p\u00f3s-treino'],
             sens:'Algumas pessoas sentem a energia a subir aos poucos, mais disposição para treinar e uma recuperação mais rápida. Se não sentires nada disto, também é normal.' },
-        'Janela f\u00e9rtil': { cor:'#FEF9C3', ct:'#854D0E',
+        'Janela f\u00e9rtil': {
             nut:['Antioxidantes: frutos vermelhos, vegetais','Prote\u00edna continua importante','Evita ultra-processados'],
             sens:'Algumas pessoas sentem uma ligeira dor ou pressão no baixo-ventre, alterações no muco cervical ou mais disposição. Se não sentires nada disto, também é normal.' },
-        'L\u00fatea': { cor:'#F3E8FF', ct:'#581C87',
+        'L\u00fatea': {
             nut:['Magn\u00e9sio: nozes, sementes de ab\u00f3bora','Menos cafe\u00edna se tiveres ins\u00f3nias','Chocolate negro para cravings'],
             sens:'Algumas pessoas sentem a energia a variar, retenção de líquidos, irritabilidade ou humor mais em baixo, sobretudo perto da menstruação. Se não sentires nada disto, também é normal.' }
     };
     var d = DICAS[nomeF];
     if (!d) return '';
-    function li(t) { return '<li style="font-size:14px;margin-bottom:2px;">' + t + '</li>'; }
-    function sec(lbl, arr) {
-        return '<div><div style="font-size:12px;font-weight:700;color:' + d.ct + ';margin-bottom:4px;">' + lbl + '</div>'
-            + '<ul style="margin:0;padding-left:18px;">' + arr.map(li).join('') + '</ul></div>';
-    }
-    return '<div style="margin-top:14px;background:' + d.cor + ';border-radius:20px;padding:16px;">'
-        + '<div style="font-weight:700;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:' + d.ct + ';margin-bottom:10px;">O que esperar \u00b7 Dia ' + diasCiclo + '</div>'
-        + '<div style="display:grid;gap:12px;">'
-        + sec('Nutri\u00e7\u00e3o', d.nut)
-        + '<div><div style="font-size:12px;font-weight:700;color:' + d.ct + ';margin-bottom:4px;">O que podes sentir</div>'
-        + '<p style="margin:0;font-size:14px;line-height:1.5;">' + d.sens + '</p></div>'
-        + '</div></div>';
+    var chips = d.nut.map(function (t) { return '<span class="espera-chip">' + t + '</span>'; }).join('');
+    return '<div class="espera">'
+        + '<div class="espera-titulo">O que esperar \u00b7 Dia ' + diasCiclo + '</div>'
+        + '<div class="espera-sub">Nutri\u00e7\u00e3o</div>'
+        + '<div class="espera-chips">' + chips + '</div>'
+        + '<div class="espera-sub">O que podes sentir</div>'
+        + '<p class="espera-texto">' + d.sens + '</p>'
+        + '</div>';
 }
 
 // ---- LINHA DO TEMPO ----
@@ -620,12 +695,14 @@ function renderTimeline() {
     barra.innerHTML = est.segmentos.map(s => {
         const info = CicloCalc.FASES_INFO[s.nome];
         const largura = ((s.ate - s.de + 1) / est.total) * 100;
-        return `<div class="timeline-seg" style="width:${largura}%; background:${info.cor};" title="${s.nome}"></div>`;
+        return `<div class="timeline-seg" style="width:${largura}%; background:linear-gradient(90deg, ${info.cor}, ${info.clara});" title="${s.nome}"></div>`;
     }).join('');
 
     // Marcador
-    const pct = Math.min(100, ((f.dia - 0.5) / est.total) * 100);
-    document.getElementById('timeline-marcador').style.left = pct + '%';
+    const pct = Math.min(96, Math.max(4, ((f.dia - 0.5) / est.total) * 100));
+    const marcador = document.getElementById('timeline-marcador');
+    marcador.style.left = pct + '%';
+    marcador.textContent = f.dia;
 
     // Rótulos: início, ovulação estimada (posicionada no seu dia) e último dia
     const ovDia = CicloCalc.diferencaDias(f.ovulacao, ciclos[0].inicio) + 1;
@@ -640,7 +717,7 @@ function renderTimeline() {
         const info = CicloCalc.FASES_INFO[s.nome];
         return `
         <div class="fase-leg-item">
-            <div class="fase-leg-dot" style="background:${info.cor};"></div>
+            <div class="fase-leg-dot" style="background:linear-gradient(135deg, ${info.cor}, ${info.clara});"></div>
             ${s.nome} (dias ${s.de}–${s.ate})
         </div>`;
     }).join('');
@@ -663,11 +740,6 @@ function renderCalendario() {
     const primeiroDia = new Date(ano, mes, 1).getDay();
     const ultimoDia = new Date(ano, mes + 1, 0).getDate();
 
-    // Espaços vazios
-    for (let i = 0; i < primeiroDia; i++) {
-        html += `<div class="cal-dia vazio"></div>`;
-    }
-
     // Marcas calculadas (período, janela fértil, ovulação, previsão)
     const pad = n => String(n).padStart(2, '0');
     const mapaFases = CicloCalc.marcasCalendario(
@@ -683,7 +755,20 @@ function renderCalendario() {
         ? new Set()
         : new Set(eventos.filter(e => e.tipo === 'relacao').map(e => e.data));
 
+    // Cada dia tem linha/coluna explícitas (linha 1 = cabeçalho); as faixas da janela
+    // fértil ocupam um troço de colunas na mesma linha e ficam por baixo dos dias.
+    let htmlDias = '';
+    let faixas = '';
+    let troco = null; // { linha, col, n }
+    const fecharTroco = () => {
+        if (troco) faixas += `<div class="cal-faixa" style="grid-area:${troco.linha} / ${troco.col} / auto / span ${troco.n};"></div>`;
+        troco = null;
+    };
+
     for (let d = 1; d <= ultimoDia; d++) {
+        const idx = primeiroDia + d - 1;
+        const linha = 2 + Math.floor(idx / 7);
+        const col = 1 + (idx % 7);
         const dataStr = `${ano}-${String(mes+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
         const info = Object.assign({}, mapaFases[dataStr]);
         if (emGravidez) { delete info.janela; delete info.ovulacao; delete info.previsao; }
@@ -703,10 +788,19 @@ function renderCalendario() {
 
         if (isSelecionado) classes += ' sel';
 
-        html += `<div class="${classes}" onclick="selecionarDia('${dataStr}')">${d}</div>`;
-    }
+        const naFaixa = !info.periodo && (info.ovulacao || info.janela);
+        if (naFaixa) {
+            if (troco && troco.linha === linha) troco.n++;
+            else { fecharTroco(); troco = { linha, col, n: 1 }; }
+        } else {
+            fecharTroco();
+        }
 
-    grid.innerHTML = html;
+        htmlDias += `<div class="${classes}" style="grid-area:${linha} / ${col};" onclick="selecionarDia('${dataStr}')">${d}</div>`;
+    }
+    fecharTroco();
+
+    grid.innerHTML = html + faixas + htmlDias;
     document.querySelectorAll(".leg-estimativa").forEach(el => { el.style.display = emGravidez ? "none" : "inline-flex"; });
     document.querySelectorAll('.leg-relacao').forEach(el => { el.style.display = discreto ? 'none' : 'inline-flex'; });
     atualizarOpcionais();
@@ -715,6 +809,10 @@ function renderCalendario() {
 function mudarMes(delta) {
     mesAtual = new Date(mesAtual.getFullYear(), mesAtual.getMonth() + delta, 1);
     renderCalendario();
+    const grid = document.getElementById('cal-grid');
+    grid.classList.remove('fade');
+    void grid.offsetWidth; // reinicia a animação
+    grid.classList.add('fade');
 }
 
 function selecionarDia(data) {
