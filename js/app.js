@@ -207,53 +207,39 @@ async function resetAgua() {
 // CICLO — RESUMO NO DASHBOARD
 // ============================================
 
-const FASES = [
-    { nome: 'Menstrual', emoji: '🔴', dias: [1, 5], cor: '#FCA5A5', descricao: 'Energia mais baixa. Prioriza recuperação.' },
-    { nome: 'Folicular', emoji: '🌱', dias: [6, 13], cor: '#86EFAC', descricao: 'Energia a subir. Boa fase para treinos intensos.' },
-    { nome: 'Ovulação', emoji: '✨', dias: [14, 16], cor: '#FDE68A', descricao: 'Pico de energia. Máximo desempenho.' },
-    { nome: 'Lútea', emoji: '🌙', dias: [17, 28], cor: '#C4B5FD', descricao: 'Energia variável. Foca em treinos moderados.' }
-];
-
-function calcularFase(diasCiclo) {
-    for (const fase of FASES) {
-        if (diasCiclo >= fase.dias[0] && diasCiclo <= fase.dias[1]) return fase;
-    }
-    return FASES[3]; // lútea por defeito
-}
-
 async function carregarCicloResumido() {
+    const container = document.getElementById('ciclo-info');
+    if (!container) return;
+
     try {
         const { data: rows } = await db
             .from('ciclo_menstrual')
-            .select('*')
+            .select('inicio, fim')
             .order('inicio', { ascending: false })
-            .limit(1);
+            .limit(24);
 
-        const container = document.getElementById('ciclo-info');
-        if (!container) return;
-
-        const data = rows && rows.length > 0 ? rows[0] : null;
-        if (!data) {
+        const f = CicloCalc.faseAtual(rows || [], CicloCalc.hojeLocal());
+        if (!f) {
             container.innerHTML = `<span style="color:var(--cinza-meio); font-size:0.9rem;">Sem registos. Vai ao separador Ciclo para adicionar.</span>`;
             return;
         }
 
-        const inicio = new Date(data.inicio + 'T00:00:00');
-        const agora = new Date();
-        const diasCiclo = Math.floor((agora - inicio) / (1000 * 60 * 60 * 24)) + 1;
-        const fase = calcularFase(diasCiclo);
+        const info = CicloCalc.FASES_INFO[f.nome];
+        const janela = CicloCalc.textoJanela(f);
 
         container.innerHTML = `
             <div style="display:flex; align-items:center; gap:12px;">
-                <span style="font-size:2rem;">${fase.emoji}</span>
+                <span style="font-size:2rem;">${info.emoji}</span>
                 <div>
-                    <div style="font-weight:700; color:var(--azul-escuro);">${fase.nome} — dia ${diasCiclo}</div>
-                    <div style="font-size:0.82rem; color:var(--cinza-meio); margin-top:2px;">${fase.descricao}</div>
+                    <div style="font-weight:700; color:var(--azul-escuro);">${f.nome} — dia ${f.dia}</div>
+                    ${janela ? `<div style="font-size:0.85rem; font-weight:600; color:#854D0E; margin-top:2px;">${janela}</div>` : ''}
+                    <div style="font-size:0.82rem; color:var(--cinza-meio); margin-top:2px;">${CicloCalc.textoMenstruacao(f)}</div>
                 </div>
             </div>
+            ${f.aviso ? `<div style="margin-top:8px; padding:8px 12px; border-radius:var(--radius-sm); background:#FEF3C7; color:#92400E; font-size:0.78rem;">⚠️ ${f.aviso}</div>` : ''}
+            <div style="margin-top:8px; font-size:0.72rem; color:var(--cinza-meio);">${CicloCalc.AVISO_ESTIMATIVA}</div>
         `;
     } catch (e) {
-        // sem dados
+        container.innerHTML = `<span style="color:var(--cinza-meio); font-size:0.9rem;">Não foi possível carregar o ciclo.</span>`;
     }
 }
-
