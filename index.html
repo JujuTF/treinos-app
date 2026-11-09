@@ -8,7 +8,7 @@
     <meta name="apple-mobile-web-app-title" content="Treinos">
     <title>Treinos App</title>
     <link rel="stylesheet" href="css/style.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%232A9D8F'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230F766E'/><polygon points='58,8 33,52 50,52 38,92 67,48 50,48' fill='white'/></svg>">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <link rel="manifest" href="manifest.json">
 </head>
@@ -17,10 +17,10 @@
 <!-- HEADER -->
 <header class="header">
     <h1 id="header-titulo">Hoje</h1>
-    <div style="display:flex; align-items:center; gap:12px;">
+    <div class="header-acoes">
         <span class="header-data" id="header-data"></span>
-        <button onclick="fazerLogout()" title="Sair" style="background:none; border:none; cursor:pointer; color:var(--cinza-meio); padding:4px;">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <button class="icon-btn" onclick="fazerLogout()" title="Sair" aria-label="Sair">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                 <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
             </svg>
         </button>
@@ -33,16 +33,55 @@
 <section class="page active" id="page-dashboard">
 
     <!-- Ciclo (respeita o modo discreto) -->
-    <div class="card" id="card-ciclo">
-        <div class="card-titulo">Ciclo menstrual</div>
+    <div class="hero" id="card-ciclo">
+        <div class="hero-topo">
+            <span class="hero-rotulo">Ciclo menstrual</span>
+            <span id="ciclo-fase"></span>
+        </div>
         <div id="ciclo-info">
-            <span style="color:var(--cinza-meio); font-size:0.9rem;">A carregar...</span>
+            <span class="hero-texto">A carregar...</span>
         </div>
     </div>
 
-    <!-- Treinei hoje -->
-    <div id="treino-hoje" style="margin-bottom:12px;">
-        <button class="btn btn-primario btn-grande" onclick="abrirTreino()">Treinei hoje</button>
+    <!-- Ações rápidas -->
+    <div class="acoes">
+        <button type="button" class="acao primaria" id="acao-treino" onclick="abrirTreino()">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg>
+            Treinei hoje
+        </button>
+        <button type="button" class="acao" id="acao-nota" onclick="focarNota()">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Nota
+        </button>
+        <button type="button" class="acao" id="acao-agua" onclick="addAgua(250)" aria-label="Água, somar 250 ml">
+            <svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 2.7s6 6.3 6 10.8a6 6 0 01-12 0c0-4.5 6-10.8 6-10.8z"/></svg>
+            Água
+        </button>
+    </div>
+
+    <!-- Treino registado hoje (só aparece depois de registar) -->
+    <div id="treino-hoje" style="margin-bottom:14px;" hidden></div>
+
+    <!-- Esta semana -->
+    <div id="resumo-semana"></div>
+
+    <!-- Hidratação -->
+    <div class="card">
+        <div class="agua">
+            <div id="agua-anel-wrap"></div>
+            <div class="agua-info">
+                <div class="agua-topo">
+                    <div class="card-titulo">Hidratação</div>
+                    <button type="button" class="link-suave" onclick="resetAgua()">Repor</button>
+                </div>
+                <div class="agua-ml"><span id="agua-atual">0</span> de <span id="agua-meta-label">2000</span> ml</div>
+                <div class="agua-botoes">
+                    <button type="button" class="pill" onclick="addAgua(200)">+200</button>
+                    <button type="button" class="pill" onclick="addAgua(250)">+250</button>
+                    <button type="button" class="pill" onclick="addAgua(500)">+500</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Notas -->
@@ -54,29 +93,6 @@
         </div>
         <div id="notas-lista"></div>
         <a class="nota-link" href="notas.html">Ver todas</a>
-    </div>
-
-    <!-- Esta semana -->
-    <div id="resumo-semana"></div>
-
-    <!-- Hidratação -->
-    <div class="card">
-        <div class="card-titulo">Hidratação</div>
-        <div style="display:flex; justify-content:space-between; align-items:baseline;">
-            <span class="agua-ml" id="agua-atual">0 ml</span>
-            <span style="font-size:0.8rem; color:var(--cinza-meio);">meta: <span id="agua-meta-label">2000</span> ml</span>
-        </div>
-        <div class="agua-bar">
-            <div class="agua-fill" id="agua-fill" style="width:0%"></div>
-        </div>
-        <div class="agua-controls">
-            <button onclick="addAgua(200)">+200 ml</button>
-            <button onclick="addAgua(250)">+250 ml</button>
-            <button onclick="addAgua(500)">+500 ml</button>
-        </div>
-        <div style="margin-top:8px; text-align:right;">
-            <button onclick="resetAgua()" style="background:none; border:none; color:var(--cinza-meio); font-size:0.8rem; cursor:pointer;">↩ repor</button>
-        </div>
     </div>
 
 </section>
@@ -144,7 +160,7 @@
 <div class="modal-overlay" id="modal-confirmar">
     <div class="modal">
         <div class="modal-titulo" id="confirmar-titulo"></div>
-        <p id="confirmar-texto" style="font-size:0.9rem; color:var(--cinza-meio); margin-bottom:18px;"></p>
+        <p id="confirmar-texto" style="font-size:15px; color:var(--tx2); margin-bottom:18px;"></p>
         <div style="display:flex; gap:10px;">
             <button class="btn btn-secundario" style="flex:1;" onclick="responderConfirmacao(false)">Cancelar</button>
             <button class="btn btn-primario" style="flex:2;" id="confirmar-ok" onclick="responderConfirmacao(true)">Confirmar</button>
@@ -156,13 +172,14 @@
 <div id="toast"></div>
 
 <!-- DEPLOY INFO -->
-<div id="deploy-info" style="text-align:center; padding: 8px; color: var(--cinza-meio); font-size: 0.7rem; margin-bottom: 4px;"></div>
+<div id="deploy-info" style="text-align:center; padding: 8px; color: var(--tx2); font-size: 12px; margin-bottom: 4px;"></div>
 
 <!-- SCRIPTS -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
 <script src="js/ciclo-calc.js"></script>
 <script src="js/discreto.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/treino-calc.js"></script>
 <script src="js/app.js"></script>
 

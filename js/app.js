@@ -21,6 +21,12 @@ async function fazerLogout() {
 
 // ---- INIT ----
 document.addEventListener('DOMContentLoaded', async () => {
+    // anel da hidratação (vazio até chegarem os dados)
+    document.getElementById('agua-anel-wrap').innerHTML = UI.anel({
+        pct: 0, tamanho: 76, traco: 10, id: 'agua-anel',
+        centro: '<span class="anel-num pequeno" id="agua-pct">0%</span>',
+        rotulo: 'Progresso da hidratação'
+    });
     await verificarAuth();
     setarDataHeader();
     configurarTreino();
@@ -126,23 +132,34 @@ function renderTreinoHoje() {
     if (!el) return;
     const sessoes = sessoesDeHoje();
 
+    // o botão "Treinei hoje" fica sempre na linha de ações; aqui só o estado "registado"
     if (!sessoes.length) {
-        el.innerHTML = `<button class="btn btn-primario btn-grande" onclick="abrirTreino()">Treinei hoje</button>`;
+        el.hidden = true;
+        el.innerHTML = '';
         return;
     }
 
     const n = sessoes.length;
+    el.hidden = false;
     el.innerHTML = `
-        <div class="card" style="border-left:4px solid var(--verde); margin-bottom:0;">
+        <div class="card" style="margin-bottom:0;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                <div style="font-weight:700; color:var(--azul-escuro);">✅ Treino registado hoje${n > 1 ? ' (' + n + ')' : ''}</div>
+                <div style="font-family:var(--fonte-t); font-weight:700; font-size:17px; color:var(--tx);">Treino registado hoje${n > 1 ? ' (' + n + ')' : ''}</div>
                 <span class="badge badge-verde">Feito</span>
             </div>
             <div style="display:flex; gap:8px;">
-                <button class="btn btn-secundario" style="flex:1; font-size:0.85rem; justify-content:center;" onclick="abrirTreino()">+ Outro treino</button>
-                <button class="btn btn-secundario" style="flex:1; font-size:0.85rem; justify-content:center;" onclick="pedirDesfazerTreino()">Desfazer</button>
+                <button class="btn btn-secundario" style="flex:1;" onclick="abrirTreino()">Outro treino</button>
+                <button class="btn btn-secundario" style="flex:1;" onclick="pedirDesfazerTreino()">Desfazer</button>
             </div>
         </div>`;
+}
+
+// "Nota" nas ações rápidas: leva ao campo de notas e foca-o
+function focarNota() {
+    const input = document.getElementById('nota-input');
+    if (!input) return;
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    input.focus({ preventScroll: true });
 }
 
 // ---- folha rápida ----
@@ -201,7 +218,7 @@ async function guardarTreino() {
     const { error } = await db.from('sessoes_treino').insert(payload);
     if (error) {
         console.error(error);
-        mostrarToast('Erro ao guardar 😕');
+        mostrarToast('Erro ao guardar');
         return;
     }
     fecharTreino();
@@ -239,7 +256,7 @@ async function pedirDesfazerTreino() {
     const { error } = await db.from('sessoes_treino').delete().eq('id', ultima.id);
     if (error) {
         console.error(error);
-        mostrarToast('Não foi possível desfazer 😕');
+        mostrarToast('Não foi possível desfazer');
         return;
     }
     mostrarToast('Treino removido');
@@ -259,41 +276,40 @@ function renderResumoSemana() {
     const segunda = TreinoCalc.inicioSemana(hojeStr);
     const letras = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
 
-    let bolinhas = '';
+    let capsulas = '';
     for (let i = 0; i < 7; i++) {
         const ds = TreinoCalc.somarDias(segunda, i);
         const treinou = datas.indexOf(ds) !== -1;
         const ehHoje = ds === hojeStr;
         const futuro = ds > hojeStr;
-        const bg = ehHoje ? 'var(--verde)' : treinou ? 'var(--verde-claro)' : futuro ? 'transparent' : 'var(--cinza-claro)';
-        const cor = ehHoje ? 'white' : treinou ? 'var(--verde)' : 'var(--cinza-meio)';
-        const borda = futuro && !ehHoje ? '1.5px dashed var(--cinza-borda)' : 'none';
-        const icone = treinou ? '✓' : futuro ? '' : '·';
-        bolinhas += `
-            <div style="text-align:center">
-                <div style="font-size:0.6rem; color:var(--cinza-meio); margin-bottom:3px; font-weight:600">${letras[i]}</div>
-                <div style="width:32px; height:32px; border-radius:50%; margin:0 auto; display:flex; align-items:center; justify-content:center; font-size:0.75rem; background:${bg}; color:${cor}; border:${borda}">${icone}</div>
+        const estado = treinou ? 'treinou' : futuro ? 'ainda por vir' : 'sem treino';
+        capsulas += `
+            <div class="dia-cap${ehHoje ? ' hoje' : ''}">
+                <div class="cap${treinou ? ' feito' : ''}${futuro && !treinou ? ' futuro' : ''}${ehHoje ? ' hoje' : ''}" role="img" aria-label="${DIAS_LONGOS[i]}: ${estado}"></div>
+                <span class="dia-letra" aria-hidden="true">${letras[i]}</span>
             </div>`;
     }
 
     const diasSemana = TreinoCalc.contarIntervalo(datas, segunda, TreinoCalc.somarDias(segunda, 6));
     const sequencia = TreinoCalc.sequenciaAtual(datas, hojeStr);
-    const caixa = (valor, rotulo) => `
-        <div style="text-align:center; background:var(--fundo); border-radius:var(--radius-sm); padding:10px;">
-            <div style="font-size:1.4rem; font-weight:700; color:var(--verde);">${valor}</div>
-            <div style="font-size:0.68rem; color:var(--cinza-meio); margin-top:2px;">${rotulo}</div>
+    const numero = (valor, rotulo) => `
+        <div>
+            <div class="num-grande">${valor}</div>
+            <div class="num-rot">${rotulo}</div>
         </div>`;
 
     container.innerHTML = `
         <div class="card">
             <div class="card-titulo">Esta semana</div>
-            <div style="display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:14px;">${bolinhas}</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                ${caixa(diasSemana, diasSemana === 1 ? 'dia treinado' : 'dias treinados')}
-                ${caixa(sequencia, sequencia === 1 ? 'dia de sequência' : 'dias de sequência')}
+            <div class="semana-nums">
+                ${numero(diasSemana, diasSemana === 1 ? 'treino' : 'treinos')}
+                ${numero(sequencia, sequencia === 1 ? 'dia de sequência' : 'dias de sequência')}
             </div>
+            <div class="semana-dias">${capsulas}</div>
         </div>`;
 }
+
+const DIAS_LONGOS = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'];
 
 // ============================================
 // HIDRATAÇÃO
@@ -304,9 +320,10 @@ function atualizarAgua() {
     const meta = estadoDia.meta_agua_ml;
     const pct = Math.min(100, (ml / meta) * 100);
 
-    document.getElementById('agua-atual').textContent = ml + ' ml';
-    document.getElementById('agua-fill').style.width = pct + '%';
+    document.getElementById('agua-atual').textContent = ml;
     document.getElementById('agua-meta-label').textContent = meta;
+    document.getElementById('agua-pct').textContent = Math.round(pct) + '%';
+    UI.definirAnel(document.getElementById('agua-anel'), pct);
 }
 
 async function addAgua(ml) {
@@ -335,9 +352,15 @@ async function resetAgua() {
 // CICLO — RESUMO NO DASHBOARD
 // ============================================
 
+function dataCurta(str) {
+    return new Date(str + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'short' });
+}
+
 async function carregarCicloResumido() {
     const container = document.getElementById('ciclo-info');
+    const pilula = document.getElementById('ciclo-fase');
     if (!container) return;
+    if (pilula) pilula.innerHTML = '';
 
     try {
         const { data: rows } = await db
@@ -351,9 +374,9 @@ async function carregarCicloResumido() {
         if (Discreto.ativo()) {
             const fd = CicloCalc.faseAtual(rows || [], CicloCalc.hojeLocal());
             container.innerHTML = `
-                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-                    <div style="font-weight:700; color:var(--azul-escuro);">${fd ? 'Ciclo - dia ' + fd.dia : 'Ciclo'}</div>
-                    <a href="ciclo.html" style="font-size:0.85rem; font-weight:600; color:var(--verde); text-decoration:none;">Ver detalhes</a>
+                <div class="hero-linha">
+                    <div class="hero-forte">${fd ? 'Ciclo - dia ' + fd.dia : 'Ciclo'}</div>
+                    <a href="ciclo.html" class="pill">Ver detalhes</a>
                 </div>`;
             return;
         }
@@ -367,35 +390,56 @@ async function carregarCicloResumido() {
         if (gravidez.ativo) {
             const g = CicloCalc.semanasGravidez(rows || [], CicloCalc.hojeLocal());
             container.innerHTML = `
-                <div style="font-weight:700; font-size:1.05rem; color:var(--azul-escuro);">${CicloCalc.textoGravidez(g)}</div>
-                <div style="margin-top:6px; font-size:0.8rem; color:var(--cinza-meio);">${CicloCalc.TEXTO_GRAVIDEZ}</div>
+                <div class="hero-forte" style="margin-top:12px;">${CicloCalc.textoGravidez(g)}</div>
+                <div class="hero-nota">${CicloCalc.TEXTO_GRAVIDEZ}</div>
             `;
             return;
         }
 
         const f = CicloCalc.faseAtual(rows || [], CicloCalc.hojeLocal());
         if (!f) {
-            container.innerHTML = `<span style="color:var(--cinza-meio); font-size:0.9rem;">Sem registos. Vai ao separador Ciclo para adicionar.</span>`;
+            container.innerHTML = `<div class="hero-texto" style="margin-top:12px;">Sem registos. Vai ao separador Ciclo para adicionar.</div>`;
             return;
         }
 
         const info = CicloCalc.FASES_INFO[f.nome];
         const janela = CicloCalc.textoJanela(f);
+        if (pilula) {
+            pilula.innerHTML = `<span class="pilula-fase"><i style="background:${info.cor}"></i>${f.nome}</span>`;
+        }
+
+        // anel: dias até à menstruação (a barra mostra o avanço do ciclo)
+        const d = f.diasAteMenstruacao;
+        let num, rot;
+        if (d > 0) { num = d; rot = d === 1 ? 'dia' : 'dias'; }
+        else if (d === 0) { num = 'Hoje'; rot = ''; }
+        else { num = -d; rot = -d === 1 ? 'dia de atraso' : 'dias de atraso'; }
+        const pctCiclo = Math.min(100, Math.max(0, (f.dia / f.cicloMedio) * 100));
+        const anel = UI.anel({
+            pct: pctCiclo, tamanho: 104, traco: 9,
+            centro: `<span class="anel-num">${num}</span>${rot ? `<span class="anel-rot">${rot}</span>` : ''}`,
+            rotulo: CicloCalc.textoMenstruacao(f)
+        });
 
         container.innerHTML = `
-            <div style="display:flex; align-items:center; gap:12px;">
-                <span style="font-size:2rem;">${info.emoji}</span>
+            <div class="hero-meio">
                 <div>
-                    <div style="font-weight:700; color:var(--azul-escuro);">${f.nome} — dia ${f.dia}</div>
-                    ${janela ? `<div style="font-size:0.85rem; font-weight:600; color:#854D0E; margin-top:2px;">${janela}</div>` : ''}
-                    <div style="font-size:0.82rem; color:var(--cinza-meio); margin-top:2px;">${CicloCalc.textoMenstruacao(f)}</div>
+                    <div class="hero-dia">Dia ${f.dia}</div>
+                    <div class="hero-sub">de um ciclo médio de ${f.cicloMedio} dias</div>
                 </div>
+                ${anel}
             </div>
-            ${f.aviso ? `<div style="margin-top:8px; padding:8px 12px; border-radius:var(--radius-sm); background:#FEF3C7; color:#92400E; font-size:0.78rem;">⚠️ ${f.aviso}</div>` : ''}
-            <div style="margin-top:8px; font-size:0.72rem; color:var(--cinza-meio);">${CicloCalc.AVISO_ESTIMATIVA}</div>
+            ${janela ? `<div class="hero-janela">${janela}</div>` : ''}
+            <div class="hero-caixas">
+                <div class="hero-caixa"><span>Ovulação estimada</span><strong>${dataCurta(f.ovulacao)}</strong></div>
+                <div class="hero-caixa"><span>Menstruação prevista</span><strong>${dataCurta(f.proximoPeriodo)}</strong></div>
+            </div>
+            ${f.aviso ? `<div class="hero-aviso">${f.aviso}</div>` : ''}
+            <div class="hero-nota">${CicloCalc.AVISO_ESTIMATIVA}</div>
         `;
+        UI.animarAneis(container);
     } catch (e) {
-        container.innerHTML = `<span style="color:var(--cinza-meio); font-size:0.9rem;">Não foi possível carregar o ciclo.</span>`;
+        container.innerHTML = `<span class="hero-texto">Não foi possível carregar o ciclo.</span>`;
     }
 }
 
@@ -459,7 +503,7 @@ async function carregarNotas() {
         if (n.fixada) {
             const pin = document.createElement('span');
             pin.className = 'nota-pin';
-            pin.textContent = '📌';
+            pin.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16 3l5 5-2 1-3 3v4l-2 2-3.5-3.5L5 20l-1-1 5.5-5.5L6 10l2-2h4l3-3 1-2z"/></svg>'; pin.setAttribute('aria-label', 'Fixada');
             linha.appendChild(pin);
         }
         lista.appendChild(linha);
@@ -474,7 +518,7 @@ async function adicionarNota() {
     const { error } = await db.from('notas').insert({ texto: texto });
     if (error) {
         console.error(error);
-        mostrarToast('Não foi possível guardar 😕');
+        mostrarToast('Não foi possível guardar');
         return;
     }
     input.value = '';
@@ -488,7 +532,7 @@ async function marcarNotaFeita(id) {
         .eq('id', id);
     if (error) {
         console.error(error);
-        mostrarToast('Não foi possível guardar 😕');
+        mostrarToast('Não foi possível guardar');
         return;
     }
     await carregarNotas();
